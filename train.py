@@ -22,6 +22,9 @@ cfg = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
 cfg.gpu_options.allow_growth = True
 
 
+SS, B, C = config.S * config.S, config.B, config.C
+
+
 def train():
     print(current_time(), "training starts...")
 
@@ -29,35 +32,25 @@ def train():
     with g.as_default():
         # create a feed-able iterator, to be feed by train and test datasets
         handle_ph = tf.placeholder(dtype=tf.string, name="handle_ph")
-        train_image_names, train_images, train_probs, train_proids, train_confs, train_coords = build_dataset(config.IMAGE_TRAIN_DIR)
-        train_dataset = create_dataset(train_image_names, train_images, train_probs, train_proids, train_confs, train_coords)
+        train_dataset = create_dataset(config.TF_IMAGE_TRAIN_DIR)
         train_iterator = tf.data.make_initializable_iterator(train_dataset)
         #train_iterator = train_dataset.make_initializable_iterator()
-
-        """
-        test_image_names, test_images, test_probs, test_confs, test_coords = build_dataset(config.IMAGE_TEST_DIR)
-        test_dataset = create_dataset(test_image_names, test_images, test_probs, test_confs, test_coords, test=True)
-        test_iterator = tf.data.make_initializable_iterator(test_dataset)
-        #test_iterator = test_dataset.make_initializable_iterator()
-        """
 
         iterator = tf.data.Iterator.from_string_handle(
             handle_ph,
             tf.data.get_output_types(train_dataset),
             tf.data.get_output_shapes(train_dataset),
             tf.data.get_output_classes(train_dataset))
-        #content, label = iterator.get_next(name="next_batch")
-        image_name, content, probs, proids, confs, coords = iterator.get_next(name="next_batch")
+        image_idx, content, probs, proids, confs, coords = iterator.get_next(name="next_batch")
 
         # create model network
         #To be able to feed with batches of different size, the first dimension should be None
-        image_name_ph = tf.placeholder(dtype=tf.string, shape=(None, ), name="image_name_ph")
-        content_ph = tf.placeholder(dtype=tf.float32, shape=(None, config.IMG_H, config.IMG_W, config.IMG_C), name="content_ph")
-        #label_ph = tf.placeholder(dtype=tf.float32, shape=(None, config.S*config.S*(config.B*5+config.C)), name="label_ph")
-        probs_ph = tf.placeholder(dtype=tf.float32, shape=(None, config.S * config.S, config.C), name="probs_ph")
-        proids_ph = tf.placeholder(dtype=tf.float32, shape=(None, config.S * config.S, config.C), name="proids_ph")
-        confs_ph = tf.placeholder(dtype=tf.float32, shape=(None, config.S * config.S, config.B), name="confs_ph")
-        coords_ph = tf.placeholder(dtype=tf.float32, shape=(None, config.S * config.S, config.B, 4), name="coords_ph")
+        image_idx_ph = tf.placeholder(dtype=tf.int64, shape=(None, ), name="image_idx_ph")
+        content_ph = tf.placeholder(dtype=tf.float32, shape=(None, config.IMG_H * config.IMG_W * config.IMG_CH), name="content_ph")
+        probs_ph = tf.placeholder(dtype=tf.float32, shape=(None, SS * C), name="probs_ph")
+        proids_ph = tf.placeholder(dtype=tf.float32, shape=(None, SS * C), name="proids_ph")
+        confs_ph = tf.placeholder(dtype=tf.float32, shape=(None, SS * B), name="confs_ph")
+        coords_ph = tf.placeholder(dtype=tf.float32, shape=(None, SS * B * 4), name="coords_ph")
 
         dropout_keep_prob_ph = tf.placeholder(tf.float32, name="dropout_keep_prob")
 
@@ -88,10 +81,10 @@ def train():
 
             while True:
                 try:
-                    image_name_ts, content_ts, probs_ts, proids_ts, confs_ts, coords_ts = sess.run(
-                        [image_name, content, probs, proids, confs, coords], feed_dict={handle_ph: train_handle})
+                    image_idx_ts, content_ts, probs_ts, proids_ts, confs_ts, coords_ts = sess.run(
+                        [image_idx, content, probs, proids, confs, coords], feed_dict={handle_ph: train_handle})
                     _, train_loss = sess.run([train_op, loss_op],
-                                             feed_dict={image_name_ph: image_name_ts,
+                                             feed_dict={image_idx_ph: image_idx_ts,
                                                         content_ph: content_ts,
                                                         probs_ph: probs_ts,
                                                         proids_ph: proids_ts,

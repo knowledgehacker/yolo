@@ -4,13 +4,10 @@ import config
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()
 
-S, B, C = config.S, config.B, config.C
-SS = S * S
-
 
 def _extract_coords(coords):
-    # w, h is normalized to sqrt(w/S), sqrt(h/S) when preprocess, we should restore w, h to calculate area
-    wh = tf.pow(coords[:, :, :, 2:4], 2) * S  # unit: grid cell
+    # w, h is normalized to sqrt(w/config.S), sqrt(h/config.S) when preprocess, we should restore w, h to calculate area
+    wh = tf.pow(coords[:, :, :, 2:4], 2) * config.S  # unit: grid cell
     area = wh[:, :, :, 0] * wh[:, :, :, 1]  # unit: grid cell^2
     xy_centre = coords[:, :, :, 0:2]  # [batch, SS, B, 2]
     top_left = xy_centre - (wh * 0.5)  # [batch, SS, B, 2]

@@ -13,6 +13,9 @@ from keras.layers.core import Flatten, Dense, Dropout
 from utils.iou import calc_best_box_iou
 
 
+SS, C, B = config.S * config.S, config.C, config.B
+
+
 class FastYolo(object):
     def __init__(self):
         print("FastYolo")
@@ -21,11 +24,11 @@ class FastYolo(object):
         if data_format == "channels_last":
             keras.backend.set_image_data_format(data_format)
 
-            input_shape = (config.IMG_H, config.IMG_W, config.IMG_C)
+            input_shape = (config.IMG_H, config.IMG_W, config.IMG_CH)
         elif data_format == "channels_first":
             keras.backend.set_image_data_format(data_format)
 
-            input_shape = (config.IMG_C, config.IMG_H, config.IMG_W)
+            input_shape = (config.IMG_CH, config.IMG_H, config.IMG_W)
         else:
             print("Unsupported data format: %s" % data_format)
             exit(-1)
@@ -52,40 +55,14 @@ class FastYolo(object):
 
         model.add(Dropout(rate=1 - dropout_keep_prob))
 
-        model.add(Dense(config.S * config.S * (config.C + config.B * 5)))
+        model.add(Dense(SS * (C + B * 5)))
 
         # model.summary()
 
-        net_out = tf.identity(model.call(image_batch), name="net_out")
+        nd_image_batch = tf.reshape(image_batch, shape=([-1] + list(input_shape)))
+        net_out = tf.identity(model.call(nd_image_batch), name="net_out")
 
         return net_out
-
-    """
-    # TODO: calculate mAP
-    def calc_mAP(self, net_out, probs_true, confs_true, coords_true):
-        with tf.name_scope("output"):
-            # prediction
-            SS = config.S * config.S
-            C = config.C
-            B = config.B
-
-            probs_predict = tf.reshape(net_out[:, : SS * C], shape=([-1, SS, C]))
-            confs_predict = tf.reshape(net_out[:, SS * C:SS * (C + B)], shape=([-1, SS, B]))
-            coords_predict = tf.reshape(net_out[:, SS * (C + B):], shape=([-1, SS, B, 4]))
-
-            # confidence(object) * iou(bounding boxes) * p(class)
-            probs_predict_max = tf.reduce_max(probs_predict, [2], True) # [batch_size, SS, 1]
-            # TODO: confs_predict takes iou into account already???
-            final_probs_predict = confs_predict * probs_predict_max
-            filtered_confs_predict = tf.greater(final_probs_predict, tf.constant(config.THRESHOLD, dtype=tf.float32))
-            filtered_coords_predict = tf.equal(coords_predict, filtered_confs_predict)
-
-            # accuracy
-            correct_preds = tf.equal(tf.argmax(filtered_confs_predict, 1), confs_true)
-            acc = tf.reduce_mean(tf.cast(correct_preds, tf.float32), name='accuracy')
-
-        return preds, acc
-    """
 
     def opt(self, net_out, probs_true, proids, confs_true, coords_true):
         # parameters
@@ -95,29 +72,33 @@ class FastYolo(object):
         coord_scale = config.coord_scale
         print('scales  = {}'.format([prob_scale, conf_scale, noobj_scale, coord_scale]))
 
-        SS, C, B = config.S * config.S, config.C, config.B
+        # only confs will be adjusted
+        nd_probs_true = tf.reshape(probs_true, shape=[-1, SS, C])
+        nd_proids = tf.reshape(proids, shape=[-1, SS, C])
+        nd_confs_true = tf.reshape(confs_true, shape=[-1, SS, B])
+        nd_coords_true = tf.reshape(coords_true, shape=[-1, SS, B, 4])
 
         # calculate iou of predicted and true bounding boxes, get the best predicted one, adjust confs_true
         # TODO: adjust confs_true during train on the fly???
-        coords_predict = tf.reshape(net_out[:, SS * (C + B):], [-1, SS, B, 4])
-        best_boxes_iou = calc_best_box_iou(coords_predict, coords_true)
+        nd_coords_predict = tf.reshape(net_out[:, SS * (C + B):], shape=[-1, SS, B, 4])
+        best_boxes_iou = calc_best_box_iou(nd_coords_predict, nd_coords_true)
         print("--- best_boxes_iou shape")
         print(best_boxes_iou.shape)
         # * is equivalent to tf.multiply
-        confs = best_boxes_iou * confs_true
+        nd_confs = best_boxes_iou * nd_confs_true
 
         # calculate loss between predicted tensor 'net_out' and ground truth tensor 'true'
         # take care of the weight terms, construct indicator matrix(which grids the objects in, which ones not in).
         # TODO: why object confidence and coordinate terms in loss formula need to multiply with confs???
-        confid = noobj_scale * (1.0 - confs) + conf_scale * confs
+        nd_confid = noobj_scale * (1.0 - nd_confs) + conf_scale * nd_confs
         # TODO: weight_coo???
-        weight_coo = tf.concat(4 * [tf.expand_dims(confs, -1)], 2)
-        coordid = coord_scale * weight_coo
-        proid = prob_scale * proids
+        weight_coo = tf.concat(4 * [tf.expand_dims(nd_confs, -1)], 2)
+        nd_coordid = coord_scale * weight_coo
+        nd_proid = prob_scale * nd_proids
 
         # reconstruct label with adjusted confs
-        true = tf.concat([tf.layers.flatten(probs_true), tf.layers.flatten(confs), tf.layers.flatten(coords_true)], 1)
-        weights = tf.concat([tf.layers.flatten(proid), tf.layers.flatten(confid), tf.layers.flatten(coordid)], 1)
+        true = tf.concat([tf.layers.flatten(nd_probs_true), tf.layers.flatten(nd_confs), tf.layers.flatten(nd_coords_true)], 1)
+        weights = tf.concat([tf.layers.flatten(nd_proid), tf.layers.flatten(nd_confid), tf.layers.flatten(nd_coordid)], 1)
         print("--- weights shape")
         print(weights.shape)
 

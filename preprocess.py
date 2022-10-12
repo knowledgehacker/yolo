@@ -16,7 +16,7 @@ tf.disable_v2_behavior()
 S, B, C = config.S, config.B, config.C
 SS = S * S
 
-class_to_index = dict(zip(config.CLASSES, range(config.C)))
+class_to_index = dict(zip(config.CLASSES, range(C)))
 
 
 """
@@ -25,41 +25,23 @@ if the centre of a bounding box is in a grid, we say the grid hits the object in
 the grid is responsible for prediction of the class of the hit object, 
 and predicts config.B bounding boxes(including x, y, w, h and confidence for (whether) hit an object) for the target.
 """
-def build_dataset(input):
-    print(current_time(), "build dataset: %s starts..." % input)
+def build_dataset(input, output):
+    print(current_time(), "Build dataset: %s starts ..." % input)
 
     sample_num = 0
 
-    image_name_list = []
-    resized_image_list = []
-    probs_list = []
-    proids_list = []
-    confs_list = []
-    coords_list = []
-
+    # load image files
     image_files = load_files(input)
-    for image_file in image_files:
-        # image.shape is of format (h, w, c)
-        image_name = os.path.basename(image_file)
-        image_name_list.append(image_name)
 
-        image = plt.imread(image_file)
+    fout = open(config.IMG_IDX_FILE, 'w', encoding='utf-8')
 
-        class_names = []
-        recs = []
-        annotation_file = "%s/%s.xml" % (config.ANNOT_DIR, image_name[:image_name.rindex('.')])
-        #print("--- annotation_file: %s" % annotation_file)
-        obj_infos = parse_annotation(annotation_file)
-        for obj_info in obj_infos:
-            class_name, difficult, rec, image_shape = obj_info
-            if difficult != 1:
-                class_names.append(class_name)
-                recs.append(rec)
-                """
-                print("--- rec")
-                print("left: %f, top: %f, right: %f, bottom: %f" % (rec.left, rec.top, rec.right, rec.bottom))
-                """
+    examples = []
+    for image_idx in range(len(image_files)):
+        # image.shape: (h, w, c)
+        image_name = os.path.basename(image_files[image_idx])
+        fout.write("%s\t%d" % (image_name, image_idx))
 
+        class_names, recs = get_objs(image_name)
         if len(class_names) == 0:
             continue
 
@@ -68,35 +50,31 @@ def build_dataset(input):
         confs = np.zeros((SS, B))
         coords = np.zeros((SS, B, 4))
 
+        image = plt.imread("%s/%s" % (input, image_name))
         resized_image, resized_recs = resize(image, recs, config.IMG_W, config.IMG_H)
-        for i in range(len(resized_recs)):
-            resized_rec = resized_recs[i]
+        for class_name, resized_rec in zip(class_names, resized_recs):
             x, y, w, h = resized_rec.corner_to_centre()
 
             grid_w, grid_h = float(config.IMG_W / S), float(config.IMG_H / S)
-            grid_x, grid_y = int(x / grid_w), int(y / grid_h)
-            grid = grid_y * S + grid_x
+            grid = int(y / grid_h) * S + int(x / grid_w)
             """
             print("--- resized_rec")
             print("left: %f, top: %f, right: %f, bottom: %f"
                   % (resized_rec.left, resized_rec.top, resized_rec.right, resized_rec.bottom))
             print("x: %f, y: %f, w: %f, h: %f" % (x, y, w, h))
-            print("grid_x: %d, grid_y: %d, grid: %d" % (grid_x, grid_y, grid))
+            print("grid_x: %d, grid_y: %d, grid: %d" % (int(x / grid_w), int(y / grid_h), grid))
             """
 
-            probs[grid, class_to_index[class_names[i]]] = 1.0
-            proids[grid, :] = [1] * C
-
-            # TODO: for ground truth bounding box, replicate B copies???
-            confs[grid, :] = [1.0] * B
-
+            probs[grid, class_to_index[class_name]] = 1.0
+            proids[grid, :] = [1.0] * C
+            confs[grid, :] = [1.0] * B  # for ground truth bounding box, replicate B copies
             """
             --- normalization
-            (x, y): divided by grid size, then relative to the object grid.
+            (x, y): divided by grid size, then relative to the grid the object in.
             (w, h): sqrt(w / config.IMG_W), sqrt(h / config.IMG_H)
             """
             norm_x, norm_y = x / grid_w, y / grid_h
-            norm_x, norm_y = norm_x - np.floor(norm_x), norm_y - np.floor(norm_y)
+            norm_x, norm_y = norm_x - int(norm_x), norm_y - int(norm_y)
             norm_w, norm_h = sqrt(float(w / config.IMG_W)), float(sqrt(h / config.IMG_H))
             coords[grid, :, :] = [[norm_x, norm_y, norm_w, norm_h]] * B
             """
@@ -115,37 +93,66 @@ def build_dataset(input):
             print(coords)
             """
 
-        # TODO: does unflatten ones work?
-        """
-        resized_image_list.append(resized_image.flatten())
-        probs_list.append(probs.flatten())
-        confs_list.append(confs.flatten())
-        coords_list.append(coords.flatten())
-        """
-        resized_image_list.append(resized_image)
-        probs_list.append(probs)
-        proids_list.append(proids)
-        confs_list.append(confs)
-        coords_list.append(coords)
+        example = tf.train.Example(features=tf.train.Features(
+            feature={
+                'image_idx': int64_feature([image_idx]),
+                'content': float_feature(resized_image.flatten()),
+                'probs': float_feature(probs.flatten()),
+                'proids': float_feature(proids.flatten()),
+                'confs': float_feature(confs.flatten()),
+                'coords': float_feature(coords.flatten())
+            }))
+        examples.append(example)
 
         sample_num += 1
+        if sample_num % config.BATCH_SIZE == 0:
+            print(current_time(), "%d samples generated!" % sample_num)
+            writer = tf.python_io.TFRecordWriter("%s/image-%03d.tfrecords" % (output, sample_num / config.BATCH_SIZE - 1))
+            for exp in examples:
+                writer.write(exp.SerializeToString())
+            writer.close()
+
+            examples = []
+
+    print(current_time(), "%d samples generated!" % sample_num)
+    writer = tf.python_io.TFRecordWriter("%s/image-%03d.tfrecords" % (output, sample_num / config.BATCH_SIZE))
+    for exp in examples:
+        writer.write(exp.SerializeToString())
+    writer.close()
+
+    fout.close()
 
     print("sample_num=%d" % sample_num)
 
-    print(current_time(), "build dataset: %s finishes..." % input)
-
-    image_name_array = np.asarray(image_name_list)
-    resized_image_array = np.asarray(resized_image_list)
-    probs_array = np.asarray(probs_list)
-    proids_array = np.asarray(proids_list)
-    confs_array = np.asarray(confs_list)
-    coords_array = np.asarray(coords_list)
-
-    return image_name_array, resized_image_array, probs_array, proids_array, confs_array, coords_array
+    print(current_time(), "Build dataset: %s finished!" % input)
 
 
-"""
-resized_images, probs, confs, coords = build_dataset(config.IMAGE_DIR)
-print("--- image")
-print(resized_images[0])
-"""
+def int64_feature(value):
+    return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
+
+
+def float_feature(value):
+    return tf.train.Feature(float_list=tf.train.FloatList(value=value))
+
+
+def get_objs(image_name):
+    class_names = []
+    recs = []
+    annotation_file = "%s/%s.xml" % (config.ANNOT_DIR, image_name[:image_name.rindex('.')])
+    # print("--- annotation_file: %s" % annotation_file)
+    obj_infos = parse_annotation(annotation_file)
+    for obj_info in obj_infos:
+        class_name, difficult, rec, image_shape = obj_info
+        if difficult != 1:
+            class_names.append(class_name)
+            recs.append(rec)
+            """
+            print("--- rec")
+            print("left: %f, top: %f, right: %f, bottom: %f" % (rec.left, rec.top, rec.right, rec.bottom))
+            """
+
+    return class_names, recs
+
+
+build_dataset(config.IMAGE_TRAIN_DIR, config.TF_IMAGE_TRAIN_DIR)
+build_dataset(config.IMAGE_TEST_DIR, config.TF_IMAGE_TEST_DIR)

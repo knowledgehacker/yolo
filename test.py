@@ -22,14 +22,10 @@ cfg = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
 cfg.gpu_options.allow_growth = True
 
 
-def write_preds(image_name_ts, net_out_ts):
-    for (image_name, net_out) in zip(image_name_ts, net_out_ts):
-        image_file = "%s/%s" % (config.IMAGE_TEST_DIR, str(image_name, 'utf-8'))
-        postprocess(image_file, net_out[0])
-
-
 def test():
-    print(current_time(), "testing starts...")
+    print(current_time(), "Testing starts ...")
+
+    image_idx_to_name = process_image_idx_file()
 
     g = tf.Graph()
     with tf.Session(graph=g, config=cfg) as sess:
@@ -55,8 +51,7 @@ def test():
 
         # create iterator for test dataset
         #handle_ph = g.get_tensor_by_name("handle_ph:0")
-        test_image_names, test_images, test_probs, test_proids, test_confs, test_coords = build_dataset(config.IMAGE_TEST_DIR)
-        test_dataset = create_dataset(test_image_names, test_images, test_probs, test_proids, test_confs, test_coords, test=True)
+        test_dataset = create_dataset(config.TF_IMAGE_TEST_DIR, test=True)
         test_iterator = test_dataset.make_initializable_iterator()
         image_name, content, probs, proids, confs, coords = test_iterator.get_next("next_batch")
 
@@ -81,14 +76,14 @@ def test():
                 net_outs.append(net_out_ts)
                 print("I am there...")
                 print(net_outs)
-                write_preds(image_name_ts, net_out_ts)
+                write_preds(image_name_ts, net_out_ts, image_idx_to_name)
         except tf.errors.OutOfRangeError:
             print("I am here...")
             print(net_outs)
-            write_preds(image_name_ts, net_out_ts)
+            write_preds(image_name_ts, net_out_ts, image_idx_to_name)
             pass
 
-    print(current_time(), "testing finishes...")
+    print(current_time(), "Testing finished!")
 
 
 def load_model(sess, model_dir, filename):
@@ -110,6 +105,25 @@ def load_ckpt_model(sess, ckpt_dir):
     print("ckpt_file: %s" % ckpt_file)
     saver = tf.train.import_meta_graph("{}.meta".format(ckpt_file))
     saver.restore(sess, ckpt_file)
+
+
+def process_image_idx_file():
+    image_idx_to_name = dict()
+
+    fin = open(config.IMG_IDX_FILE, 'r', encoding='utf-8')
+    for line in fin:
+        line = line.strip()
+        name, idx_str = line.split('\t')
+        idx = int(idx_str)
+        image_idx_to_name[idx] = name
+
+    return image_idx_to_name
+
+
+def write_preds(image_idx_ts, net_out_ts, image_idx_to_name):
+    for (image_idx, net_out) in zip(image_idx_ts, net_out_ts):
+        image_file = "%s/%s" % (config.IMAGE_TEST_DIR, image_idx_to_name[image_idx])
+        postprocess(image_file, net_out[0])
 
 
 def main():

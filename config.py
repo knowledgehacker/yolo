@@ -12,8 +12,11 @@ DATA_DIR = 'data/VOC2012'
 ANNOT_DIR = '%s/Annotations' % DATA_DIR
 IMAGE_TRAIN_DIR = '%s/tmp/JPEGImages' % DATA_DIR
 IMAGE_TEST_DIR = '%s/tmp/JPEGImages' % DATA_DIR
-#IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % DATA_DIR
-#IMAGE_TEST_DIR = '%s/test/JPEGImages' % DATA_DIR
+#IMAGE_TRAIN_DIR = '%s/train' % DATA_DIR
+#IMAGE_TEST_DIR = '%s/test' % DATA_DIR
+
+TF_IMAGE_TRAIN_DIR = '%s/tf/train' % DATA_DIR
+TF_IMAGE_TEST_DIR = '%s/tf/test' % DATA_DIR
 """
 TRAIN_PATH = '%s/train' % DATA_DIR
 TEST_PATH = '%s/test' % DATA_DIR
@@ -35,7 +38,9 @@ coord_scale = 5
 # image
 IMG_H = 448
 IMG_W = 448
-IMG_C = 3
+IMG_CH = 3
+
+IMG_IDX_FILE = '%s/image_indexes.txt' % DATA_DIR
 
 # classes
 """
@@ -68,7 +73,7 @@ C = len(CLASSES)
 
 THRESHOLD = 0.17
 
-NUM_EPOCH = 5
+NUM_EPOCH = 2
 
 STEPS_PER_CKPT = 250
 
@@ -78,7 +83,8 @@ VALIDATE = False
 SHUFFLE_SIZE = 5000
 
 # large batch, ex 200, does not work, I don't know why
-BATCH_SIZE = 128
+#BATCH_SIZE = 128
+BATCH_SIZE = 2
 TEST_BATCH_SIZE = 300
 
 LEARNING_RATE = 1e-3
