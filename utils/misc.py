@@ -25,6 +25,20 @@ def load_files(input):
     return files
 
 
+def load_image_indexes(index_file):
+    image_index2names = []
+
+    fin = open(index_file, 'r')
+    for line in fin:
+        line = line.strip()
+        name, idx_str = line.split('\t')
+        idx = int(idx_str)
+        image_index2names.append((idx, name))
+    fin.close()
+
+    return image_index2names
+
+
 def with_prefix(prefix, op):
     return "%s/%s" % (prefix, op)
     #return op

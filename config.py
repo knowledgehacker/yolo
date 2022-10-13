@@ -17,15 +17,8 @@ IMAGE_TEST_DIR = '%s/tmp/JPEGImages' % DATA_DIR
 
 TF_IMAGE_TRAIN_DIR = '%s/tf/train' % DATA_DIR
 TF_IMAGE_TEST_DIR = '%s/tf/test' % DATA_DIR
-"""
-TRAIN_PATH = '%s/train' % DATA_DIR
-TEST_PATH = '%s/test' % DATA_DIR
 
-RAW_TRAIN_PATH = '%s/cnews.train.txt' % TRAIN_PATH
-RAW_TEST_PATH = '%s/cnews.test.txt' % TEST_PATH
-TF_TRAIN_PATH = '%s/cnews.train.tfrecords' % TRAIN_PATH
-TF_TEST_PATH = '%s/cnews.test.tfrecords' % TEST_PATH
-"""
+IMAGE_INDEX_FILE = "%s/image_indexes" % DATA_DIR
 
 JSON = False
 
@@ -40,7 +33,6 @@ IMG_H = 448
 IMG_W = 448
 IMG_CH = 3
 
-IMG_IDX_FILE = '%s/image_indexes.txt' % DATA_DIR
 
 # classes
 """

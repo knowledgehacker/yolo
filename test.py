@@ -2,10 +2,9 @@
 import os
 
 import config
-from preprocess import build_dataset
 from input_feed import create_dataset
 from predict import postprocess
-from utils.misc import current_time, with_prefix
+from utils.misc import current_time, with_prefix, load_image_indexes
 
 """
 import tensorflow as tf
@@ -25,7 +24,7 @@ cfg.gpu_options.allow_growth = True
 def test():
     print(current_time(), "Testing starts ...")
 
-    image_idx_to_name = process_image_idx_file()
+    image_index2names = dict(load_image_indexes("%s-%s.txt" % (config.IMAGE_INDEX_FILE, "test")))
 
     g = tf.Graph()
     with tf.Session(graph=g, config=cfg) as sess:
@@ -76,11 +75,11 @@ def test():
                 net_outs.append(net_out_ts)
                 print("I am there...")
                 print(net_outs)
-                write_preds(image_name_ts, net_out_ts, image_idx_to_name)
+                write_preds(image_name_ts, net_out_ts, image_index2names)
         except tf.errors.OutOfRangeError:
             print("I am here...")
             print(net_outs)
-            write_preds(image_name_ts, net_out_ts, image_idx_to_name)
+            write_preds(image_name_ts, net_out_ts, image_index2names)
             pass
 
     print(current_time(), "Testing finished!")
@@ -105,19 +104,6 @@ def load_ckpt_model(sess, ckpt_dir):
     print("ckpt_file: %s" % ckpt_file)
     saver = tf.train.import_meta_graph("{}.meta".format(ckpt_file))
     saver.restore(sess, ckpt_file)
-
-
-def process_image_idx_file():
-    image_idx_to_name = dict()
-
-    fin = open(config.IMG_IDX_FILE, 'r', encoding='utf-8')
-    for line in fin:
-        line = line.strip()
-        name, idx_str = line.split('\t')
-        idx = int(idx_str)
-        image_idx_to_name[idx] = name
-
-    return image_idx_to_name
 
 
 def write_preds(image_idx_ts, net_out_ts, image_idx_to_name):

@@ -3,10 +3,11 @@
 import os
 import numpy as np
 from math import sqrt
+from multiprocessing.pool import ThreadPool
 
 import config
 from utils.parser import parse_annotation, resize
-from utils.misc import current_time, load_files
+from utils.misc import current_time, load_image_indexes
 
 import matplotlib.pyplot as plt
 
@@ -25,21 +26,49 @@ if the centre of a bounding box is in a grid, we say the grid hits the object in
 the grid is responsible for prediction of the class of the hit object, 
 and predicts config.B bounding boxes(including x, y, w, h and confidence for (whether) hit an object) for the target.
 """
+
+
 def build_dataset(input, output):
     print(current_time(), "Build dataset: %s starts ..." % input)
 
-    sample_num = 0
+    image_index2names = load_image_indexes("%s-%s.txt" % (config.IMAGE_INDEX_FILE, "train"))
+    image_files = ["%s/%s" % (input, name) for index, name in image_index2names]
 
-    # load image files
-    image_files = load_files(input)
+    pool = ThreadPool(processes=4)
 
-    fout = open(config.IMG_IDX_FILE, 'w', encoding='utf-8')
+    image_num = len(image_files)
+    batch_num = int(image_num / config.BATCH_SIZE)
+    if batch_num * config.BATCH_SIZE != image_num:
+        batch_num += 1
+    print("image_num: %d, batch_num: %d" % (image_num, batch_num))
 
-    examples = []
-    for image_idx in range(len(image_files)):
+    batch_sample_nums = []
+    for batch_idx in range(batch_num):
+        start_idx = batch_idx * config.BATCH_SIZE
+        end_idx = min((batch_idx + 1) * config.BATCH_SIZE, image_num)
+        image_file_batch = image_files[start_idx:end_idx]
+        batch_sample_num = pool.apply(generate_batch, (batch_idx, image_file_batch, output))
+        batch_sample_nums.append(batch_sample_num)
+
+    pool.close()
+    pool.join()
+
+    total_batch_sample_num = sum(batch_sample_nums)
+    print("Total %d samples generated!" % total_batch_sample_num)
+
+    print(current_time(), "Build dataset: %s finished!" % input)
+
+
+def generate_batch(batch_idx, image_file_batch, output):
+    print(current_time(), "Batch %d starts ..." % batch_idx)
+
+    batch_sample_num = 0
+
+    writer = tf.python_io.TFRecordWriter("%s/image-%03d.tfrecords" % (output, batch_idx))
+    for i in range(len(image_file_batch)):
         # image.shape: (h, w, c)
-        image_name = os.path.basename(image_files[image_idx])
-        fout.write("%s\t%d" % (image_name, image_idx))
+        image_file = image_file_batch[i]
+        image_name = os.path.basename(image_file)
 
         class_names, recs = get_objs(image_name)
         if len(class_names) == 0:
@@ -50,7 +79,7 @@ def build_dataset(input, output):
         confs = np.zeros((SS, B))
         coords = np.zeros((SS, B, 4))
 
-        image = plt.imread("%s/%s" % (input, image_name))
+        image = plt.imread(image_file)
         resized_image, resized_recs = resize(image, recs, config.IMG_W, config.IMG_H)
         for class_name, resized_rec in zip(class_names, resized_recs):
             x, y, w, h = resized_rec.corner_to_centre()
@@ -95,36 +124,21 @@ def build_dataset(input, output):
 
         example = tf.train.Example(features=tf.train.Features(
             feature={
-                'image_idx': int64_feature([image_idx]),
+                'image_idx': int64_feature([batch_idx * config.BATCH_SIZE + i]),
                 'content': float_feature(resized_image.flatten()),
                 'probs': float_feature(probs.flatten()),
                 'proids': float_feature(proids.flatten()),
                 'confs': float_feature(confs.flatten()),
                 'coords': float_feature(coords.flatten())
             }))
-        examples.append(example)
+        writer.write(example.SerializeToString())
 
-        sample_num += 1
-        if sample_num % config.BATCH_SIZE == 0:
-            print(current_time(), "%d samples generated!" % sample_num)
-            writer = tf.python_io.TFRecordWriter("%s/image-%03d.tfrecords" % (output, sample_num / config.BATCH_SIZE - 1))
-            for exp in examples:
-                writer.write(exp.SerializeToString())
-            writer.close()
-
-            examples = []
-
-    print(current_time(), "%d samples generated!" % sample_num)
-    writer = tf.python_io.TFRecordWriter("%s/image-%03d.tfrecords" % (output, sample_num / config.BATCH_SIZE))
-    for exp in examples:
-        writer.write(exp.SerializeToString())
+        batch_sample_num += 1
     writer.close()
 
-    fout.close()
+    print(current_time(), "Batch %d: %d samples generated!" % (batch_idx, batch_sample_num))
 
-    print("sample_num=%d" % sample_num)
-
-    print(current_time(), "Build dataset: %s finished!" % input)
+    return batch_sample_num
 
 
 def int64_feature(value):
@@ -155,4 +169,4 @@ def get_objs(image_name):
 
 
 build_dataset(config.IMAGE_TRAIN_DIR, config.TF_IMAGE_TRAIN_DIR)
-build_dataset(config.IMAGE_TEST_DIR, config.TF_IMAGE_TEST_DIR)
+#build_dataset(config.IMAGE_TEST_DIR, config.TF_IMAGE_TEST_DIR)

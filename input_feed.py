@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import config
+from utils.misc import load_files
 
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()
@@ -10,7 +11,10 @@ SS, B, C = config.S * config.S, config.B, config.C
 
 
 def create_dataset(input, test=False):
-    dataset = tf.data.TFRecordDataset(input)
+    tfrecords_files = [file for file in list(load_files(input))]
+    dataset = tf.data.Dataset.list_files(tfrecords_files)
+    dataset = dataset.flat_map(lambda tfrecords_file: tf.data.TFRecordDataset(tfrecords_file))
+
     dataset = dataset.map(parse)
 
     with tf.device('/cpu:0'):

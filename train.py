@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import config
-from preprocess import build_dataset
 from input_feed import create_dataset
 from fast_yolo import FastYolo
 from utils.misc import current_time
