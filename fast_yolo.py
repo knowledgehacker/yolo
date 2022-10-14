@@ -7,7 +7,7 @@ tf.disable_v2_behavior()
 import keras
 from keras import Sequential
 from keras.layers.convolutional import Convolution2D, MaxPooling2D
-from keras.layers.advanced_activations import LeakyReLU
+from keras.layers import LeakyReLU
 from keras.layers.core import Flatten, Dense, Dropout
 
 from utils.iou import calc_best_box_iou
@@ -59,8 +59,9 @@ class FastYolo(object):
 
         # model.summary()
 
-        nd_image_batch = tf.reshape(image_batch, shape=([-1] + list(input_shape)))
-        net_out = tf.identity(model.call(nd_image_batch), name="net_out")
+        net_out = tf.identity(model.call(image_batch), name="net_out")
+        #nd_image_batch = tf.reshape(image_batch, shape=([-1] + list(input_shape)))
+        #net_out = tf.identity(model.call(nd_image_batch), name="net_out")
 
         return net_out
 

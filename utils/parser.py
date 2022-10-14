@@ -71,7 +71,7 @@ def parse_annotation(annotation_file):
 
     f.close()
 
-    return obj_infos
+    return iw, ih, obj_infos
 
 
 """
@@ -93,15 +93,12 @@ def parse_annotations(annotation_dir, label_dir):
 """
 
 
-def resize(image, recs, resized_w, resized_h):
+def resize(recs, w, h, resized_w, resized_h):
     # resized_h, resized_w = 350, 900
-    h, w, _ = image.shape
     rescale_x, rescale_y = resized_w / w, resized_h / h
-    resized_image = cv2.resize(image, (resized_w, resized_h), rescale_x, rescale_y)
-
     resized_recs = [rec.rescale(rescale_x, rescale_y) for rec in recs]
 
-    return resized_image, resized_recs
+    return resized_recs
 
 
 def draw_box_with_image(image, rec):

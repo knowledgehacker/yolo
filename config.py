@@ -5,18 +5,23 @@ MODLE_DIR = "models"
 CKPT_DIR = 'ckpt'
 CKPT_PATH = '%s/%s' % (CKPT_DIR, MODEL_NAME)
 
+PROF_DIR = "prof"
+
 DATA_DIR = 'data/VOC2012'
 #ANNOT_DIR = '%s/Annotations' % DATA_DIR
 #IMAGE_DIR = '%s/JPEGImages' % DATA_DIR
 # test
 ANNOT_DIR = '%s/Annotations' % DATA_DIR
-IMAGE_TRAIN_DIR = '%s/tmp/JPEGImages' % DATA_DIR
-IMAGE_TEST_DIR = '%s/tmp/JPEGImages' % DATA_DIR
 #IMAGE_TRAIN_DIR = '%s/train' % DATA_DIR
 #IMAGE_TEST_DIR = '%s/test' % DATA_DIR
+IMAGE_TRAIN_DIR = '%s/tmp/JPEGImages' % DATA_DIR
+IMAGE_TEST_DIR = '%s/tmp/JPEGImages' % DATA_DIR
 
 TF_IMAGE_TRAIN_DIR = '%s/tf/train' % DATA_DIR
 TF_IMAGE_TEST_DIR = '%s/tf/test' % DATA_DIR
+
+TF_IMAGE_TRAIN_FILE = '%s/tf/train/objects.tfrecords' % DATA_DIR
+TF_IMAGE_TEST_FILE = '%s/tf/test/objects.tfrecords' % DATA_DIR
 
 IMAGE_INDEX_FILE = "%s/image_indexes" % DATA_DIR
 
@@ -65,19 +70,21 @@ C = len(CLASSES)
 
 THRESHOLD = 0.17
 
-NUM_EPOCH = 2
+#NUM_EPOCH = 135
+NUM_EPOCH = 1
 
-STEPS_PER_CKPT = 250
+STEPS_PER_CKPT = 10
 
 VALIDATE = False
 
 # shuffle size affects convergence greatly, it should be big enough
-SHUFFLE_SIZE = 5000
+SHUFFLE_SIZE = 500
 
 # large batch, ex 200, does not work, I don't know why
-#BATCH_SIZE = 128
+#BATCH_SIZE = 64
+#TEST_BATCH_SIZE = 300
 BATCH_SIZE = 2
-TEST_BATCH_SIZE = 300
+TEST_BATCH_SIZE = 2
 
 LEARNING_RATE = 1e-3
 
@@ -92,7 +99,3 @@ if MODEL_NAME == 'fast_yolo':
 else:
     print("Unsupported model %s" % MODEL_NAME)
     exit(-1)
-
-
-
-

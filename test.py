@@ -16,6 +16,7 @@ tf.disable_v2_behavior()
 
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"    # To use GPU, you must set the right slot
 
 cfg = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
 cfg.gpu_options.allow_growth = True
@@ -38,21 +39,24 @@ def test():
             print(operation.name)
         """
 
-        #image_name_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "image_name_ph:0"))
         content_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "content_ph:0"))
-        probs_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "probs_ph:0"))
-        proids_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "proids_ph:0"))
-        confs_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "confs_ph:0"))
-        coords_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "coords_ph:0"))
+        #image_idx_ph, \
+        probs_ph, proids_ph, confs_ph, coords_ph = (
+            #g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "image_idx_ph:0")),
+            g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "probs_ph:0")),
+            g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "proids_ph:0")),
+            g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "confs_ph:0")),
+            g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "coords_ph:0"))
+        )
         dropout_keep_prob_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "dropout_keep_prob:0"))
 
         net_out_op = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "net_out:0"))
 
         # create iterator for test dataset
         #handle_ph = g.get_tensor_by_name("handle_ph:0")
-        test_dataset = create_dataset(config.TF_IMAGE_TEST_DIR, test=True)
+        test_dataset = create_dataset(config.IMAGE_TEST_DIR, config.TF_IMAGE_TEST_FILE, test=True)
         test_iterator = test_dataset.make_initializable_iterator()
-        image_name, content, probs, proids, confs, coords = test_iterator.get_next("next_batch")
+        content, (image_idx, probs, proids, confs, coords) = test_iterator.get_next("next_batch")
 
         #test_handle = sess.run(test_iterator.string_handle())
 
@@ -60,26 +64,20 @@ def test():
         #tf.global_variables_initializer().run()
         sess.run(test_iterator.initializer)
 
-        net_outs = []
         try:
             while True:
                 # we don't need to feed test_handle to handle_ph here
-                image_name_ts, content_ts, probs_ts, proids_ts, confs_ts, coords_ts = sess.run([image_name, content, probs, proids, confs, coords])
-                net_out_ts = sess.run([net_out_op], feed_dict={#image_name_ph: image_name_ts,
+                content_ts, image_idx_ts, probs_ts, proids_ts, confs_ts, coords_ts = sess.run([content, image_idx, probs, proids, confs, coords])
+                net_out_ts = sess.run([net_out_op], feed_dict={#image_idx_ph: image_idx_ts,
                                                                content_ph: content_ts,
                                                                probs_ph: probs_ts,
                                                                proids_ph: proids_ts,
                                                                confs_ph: confs_ts,
                                                                coords_ph: coords_ts,
                                                                dropout_keep_prob_ph: config.TEST_KEEP_PROB})
-                net_outs.append(net_out_ts)
-                print("I am there...")
-                print(net_outs)
-                write_preds(image_name_ts, net_out_ts, image_index2names)
+                write_preds(image_idx_ts, net_out_ts, image_index2names)
         except tf.errors.OutOfRangeError:
-            print("I am here...")
-            print(net_outs)
-            write_preds(image_name_ts, net_out_ts, image_index2names)
+            write_preds(image_idx_ts, net_out_ts, image_index2names)
             pass
 
     print(current_time(), "Testing finished!")

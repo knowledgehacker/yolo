@@ -12,14 +12,18 @@ def current_time():
 
 def load_files(input):
     files = []
-    for dir in os.listdir(input):
-        path = os.path.join(input, dir)
-        if os.path.isdir(path):
+
+    # os.listdir lists files and directories, not only directories in the specified directory
+    for sub_dir in os.listdir(input):
+        path = os.path.join(input, sub_dir)
+        if os.path.isdir(os.path.join(os.getcwd(), path)):
+            #print("dir path: %s" % path)
             for file in os.listdir(path):
-                if not file.startswith("._"):
-                    files.append(os.path.join(path, file))
+                if not (file.startswith("._") or file.startswith(".DS_Store")):
+                    files.append(os.path.join(input, file))
         else:
-            if not path.startswith("._"):
+            #print("file path: %s" % path)
+            if not (sub_dir.startswith("._") or sub_dir.startswith(".DS_Store")):
                 files.append(path)
 
     return files
