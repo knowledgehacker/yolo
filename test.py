@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"    # To use GPU, you must set the right slot
 
 import config
 from input_feed import create_dataset
@@ -14,9 +16,6 @@ tf.compat.v1.disable_eager_execution()
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()
 
-
-os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
-os.environ['CUDA_VISIBLE_DEVICES'] = "1"    # To use GPU, you must set the right slot
 
 cfg = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
 cfg.gpu_options.allow_growth = True
@@ -75,6 +74,8 @@ def test():
                                                                confs_ph: confs_ts,
                                                                coords_ph: coords_ts,
                                                                dropout_keep_prob_ph: config.TEST_KEEP_PROB})
+                print("--- net_out_ts")
+                print(net_out_ts)
                 write_preds(image_idx_ts, net_out_ts, image_index2names)
         except tf.errors.OutOfRangeError:
             write_preds(image_idx_ts, net_out_ts, image_index2names)

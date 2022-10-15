@@ -1,5 +1,7 @@
 MODEL_NAME = 'fast_yolo'
 
+RUN_ON_DEVICE = "cpu"
+
 MODLE_DIR = "models"
 
 CKPT_DIR = 'ckpt'

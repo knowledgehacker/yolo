@@ -22,12 +22,8 @@ class FastYolo(object):
 
     def forward(self, image_batch, data_format, dropout_keep_prob=tf.constant(0.0, dtype=tf.float32)):
         if data_format == "channels_last":
-            keras.backend.set_image_data_format(data_format)
-
             input_shape = (config.IMG_H, config.IMG_W, config.IMG_CH)
         elif data_format == "channels_first":
-            keras.backend.set_image_data_format(data_format)
-
             input_shape = (config.IMG_CH, config.IMG_H, config.IMG_W)
         else:
             print("Unsupported data format: %s" % data_format)
@@ -60,8 +56,6 @@ class FastYolo(object):
         # model.summary()
 
         net_out = tf.identity(model.call(image_batch), name="net_out")
-        #nd_image_batch = tf.reshape(image_batch, shape=([-1] + list(input_shape)))
-        #net_out = tf.identity(model.call(nd_image_batch), name="net_out")
 
         return net_out
 
