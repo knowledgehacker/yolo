@@ -56,6 +56,8 @@ def test():
         test_dataset = create_dataset(config.IMAGE_TEST_DIR, config.TF_IMAGE_TEST_FILE, test=True)
         test_iterator = test_dataset.make_initializable_iterator()
         content, (image_idx, probs, proids, confs, coords) = test_iterator.get_next("next_batch")
+        if config.DEVICE_TYPE == "gpu":
+            content = tf.transpose(content, [2, 0, 1])
 
         #test_handle = sess.run(test_iterator.string_handle())
 

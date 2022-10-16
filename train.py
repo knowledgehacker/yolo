@@ -23,16 +23,6 @@ cfg.gpu_options.allow_growth = True
 SS, B, C = config.S * config.S, config.B, config.C
 
 
-device_type = config.RUN_ON_DEVICE
-if device_type == "gpu":
-    input_shape = (config.IMG_CH, config.IMG_H, config.IMG_W)
-elif device_type == "cpu":
-    input_shape = (config.IMG_H, config.IMG_W, config.IMG_CH)
-else:
-    print("Unsupported device type - %s" % device_type)
-    exit(-1)
-
-
 def train():
     print(current_time(), "Training starts ...")
 
@@ -50,6 +40,8 @@ def train():
             tf.data.get_output_shapes(train_dataset),
             tf.data.get_output_classes(train_dataset))
         content, (image_idx, probs, proids, confs, coords) = iterator.get_next(name="next_batch")
+        if config.DEVICE_TYPE == "gpu":
+            content = tf.transpose(content, [2, 0, 1])
 
         # create model network
         if config.MODEL_NAME == "fast_yolo":
@@ -59,6 +51,7 @@ def train():
             exit(-1)
 
         #To be able to feed with batches of different size, the first dimension should be None
+        content_ph = tf.placeholder(dtype=tf.float32, shape=config.placeholder_image_shape, name="content_ph")
         image_idx_ph, probs_ph, proids_ph, confs_ph, coords_ph = (
             tf.placeholder(dtype=tf.int64, shape=(None, ), name="image_idx_ph"),
             tf.placeholder(dtype=tf.float32, shape=(None, SS * C), name="probs_ph"),
@@ -69,14 +62,7 @@ def train():
 
         dropout_keep_prob_ph = tf.placeholder(tf.float32, name="dropout_keep_prob")
 
-        if device_type == "cpu":
-            content_ph = tf.placeholder(dtype=tf.float32, shape=(None, config.IMG_H, config.IMG_W, config.IMG_CH),
-                                        name="content_ph")
-            net_out_op = model.forward(content_ph, "channels_last", dropout_keep_prob_ph)
-        elif device_type == "gpu":
-            content_ph = tf.placeholder(dtype=tf.float32, shape=(None, config.IMG_CH, config.IMG_H, config.IMG_W),
-                                        name="content_ph")
-            net_out_op = model.forward(content_ph, "channels_first", dropout_keep_prob_ph)
+        net_out_op = model.forward(content_ph, config.data_format, config.input_shape, dropout_keep_prob_ph)
         loss_op, train_op = model.opt(net_out_op, probs_ph, proids_ph, confs_ph, coords_ph)
         #preds_op, acc_op = model.predict(logits, label_ph)
 

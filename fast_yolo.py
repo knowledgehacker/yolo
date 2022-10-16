@@ -20,15 +20,7 @@ class FastYolo(object):
     def __init__(self):
         print("FastYolo")
 
-    def forward(self, image_batch, data_format, dropout_keep_prob=tf.constant(0.0, dtype=tf.float32)):
-        if data_format == "channels_last":
-            input_shape = (config.IMG_H, config.IMG_W, config.IMG_CH)
-        elif data_format == "channels_first":
-            input_shape = (config.IMG_CH, config.IMG_H, config.IMG_W)
-        else:
-            print("Unsupported data format: %s" % data_format)
-            exit(-1)
-
+    def forward(self, image_batch, data_format, input_shape, dropout_keep_prob=tf.constant(0.0, dtype=tf.float32)):
         # 9 conv layers + 3 fc layers
         model = Sequential()
         model.add(Convolution2D(16, kernel_size=(3, 3), input_shape=input_shape, padding='same', data_format=data_format))

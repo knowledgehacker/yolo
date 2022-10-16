@@ -97,7 +97,6 @@ def build_dataset(input, output, data_type):
             print(coords)
             """
 
-
         example = tf.train.Example(features=tf.train.Features(
             feature={
                 'image_idx': int64_feature([i]),

@@ -1,6 +1,6 @@
 MODEL_NAME = 'fast_yolo'
 
-RUN_ON_DEVICE = "cpu"
+DEVICE_TYPE = "cpu"
 
 MODLE_DIR = "models"
 
@@ -40,6 +40,17 @@ IMG_H = 448
 IMG_W = 448
 IMG_CH = 3
 
+if DEVICE_TYPE == "gpu":
+    data_format = "channels_first"
+    placeholder_image_shape = (None, IMG_CH, IMG_H, IMG_W)
+    input_shape = (IMG_CH, IMG_H, IMG_W)
+elif DEVICE_TYPE == "cpu":
+    data_format = "channels_last"
+    placeholder_image_shape = (None, IMG_H, IMG_W, IMG_CH)
+    input_shape = (IMG_H, IMG_W, IMG_CH)
+else:
+    print("Unsupported device type - %s" % DEVICE_TYPE)
+    exit(-1)
 
 # classes
 """
@@ -83,7 +94,7 @@ VALIDATE = False
 SHUFFLE_SIZE = 500
 
 # large batch, ex 200, does not work, I don't know why
-#BATCH_SIZE = 64
+#BATCH_SIZE = 128
 #TEST_BATCH_SIZE = 300
 BATCH_SIZE = 2
 TEST_BATCH_SIZE = 2
