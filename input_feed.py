@@ -25,16 +25,15 @@ def create_dataset(image_dir, tfrecord_file, test=False):
     tfrecord_dataset = tf.data.TFRecordDataset(tfrecord_file)
 
     dataset = tf.data.Dataset.zip((image_dataset, tfrecord_dataset))
-    with tf.device('/cpu:0'):
-        if not test:
-            dataset = dataset.shuffle(config.SHUFFLE_SIZE)
-            dataset = dataset.batch(config.BATCH_SIZE)
-            #dataset = dataset.prefetch(config.BATCH_SIZE)  # prefetch makes data feed slower
-        else:
-            dataset = dataset.batch(config.TEST_BATCH_SIZE)
+    if not test:
+        dataset = dataset.shuffle(config.SHUFFLE_SIZE)
+        dataset = dataset.batch(config.BATCH_SIZE)
+        dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)  # prefetch makes data feed slower
+    else:
+        dataset = dataset.batch(config.TEST_BATCH_SIZE)
 
     dataset = dataset.map(lambda image_batch, tfrecord_batch: (image_batch, parse_tfrecords(tfrecord_batch)),
-                          num_parallel_calls=4)
+                          num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
     return dataset
 
@@ -43,10 +42,10 @@ def parse_image(image_file):
     image_str = tf.read_file(image_file)
     decoded_image = tf.image.decode_image(image_str)
     resized_image = tf.image.resize_image_with_crop_or_pad(decoded_image, config.IMG_H, config.IMG_W)
-    #if config.RUN_ON_DEVICE == "gpu":
-    #    resized_image = tf.transpose(resized_image, [2, 0, 1])
+    """
     print("--- resized_image")
     print(resized_image.shape)
+    """
 
     return resized_image
 

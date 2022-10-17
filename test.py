@@ -80,7 +80,6 @@ def test():
                 print(net_out_ts)
                 write_preds(image_idx_ts, net_out_ts, image_index2names)
         except tf.errors.OutOfRangeError:
-            write_preds(image_idx_ts, net_out_ts, image_index2names)
             pass
 
     print(current_time(), "Testing finished!")

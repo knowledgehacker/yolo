@@ -44,7 +44,7 @@ def build_dataset(input, output, data_type):
         image_name = image_file_name[:image_file_name.rindex('.')]
         #print(image_name)
 
-        w, h, class_names, recs = get_objs(image_name)
+        image_w, image_h, class_names, recs = get_objs(image_name)
         if len(class_names) == 0:
             print(image_file_name)
             bad_sample_num += 1
@@ -57,11 +57,12 @@ def build_dataset(input, output, data_type):
         confs = np.zeros((SS, B))
         coords = np.zeros((SS, B, 4))
 
-        resized_recs = resize(recs, w, h, config.IMG_W, config.IMG_H)
-        for class_name, resized_rec in zip(class_names, resized_recs):
-            x, y, w, h = resized_rec.corner_to_centre()
+        for class_name, rec in zip(class_names, recs):
+            # a bounding box's coordinates
+            x, y, w, h = rec.corner_to_centre()
 
-            grid_w, grid_h = float(config.IMG_W / S), float(config.IMG_H / S)
+            # grid size is calculated using original instead of resized image's size
+            grid_w, grid_h = float(image_w / S), float(image_h / S)
             grid_x, grid_y = int(x / grid_w), int(y / grid_h)
             grid = grid_y * S + grid_x
             """
@@ -85,7 +86,7 @@ def build_dataset(input, output, data_type):
             """
             norm_x, norm_y = x / grid_w, y / grid_h
             norm_x, norm_y = norm_x - np.floor(norm_x), norm_y - np.floor(norm_y)
-            norm_w, norm_h = sqrt(float(w / config.IMG_W)), float(sqrt(h / config.IMG_H))
+            norm_w, norm_h = sqrt(float(w / image_w)), float(sqrt(h / image_h))
             coords[grid, :, :] = [[norm_x, norm_y, norm_w, norm_h]] * B
 
             """
@@ -159,6 +160,6 @@ def float_feature(value):
 
 train_sample_num = build_dataset(config.IMAGE_TRAIN_DIR, config.TF_IMAGE_TRAIN_FILE, "train")
 print("train_sample_num: %d" % train_sample_num)
-#test_sample_num = build_dataset(config.IMAGE_TEST_DIR, config.TF_IMAGE_TEST_FILE, "test")
-#print("test_sample_num: %d" % test_sample_num)
+test_sample_num = build_dataset(config.IMAGE_TEST_DIR, config.TF_IMAGE_TEST_FILE, "test")
+print("test_sample_num: %d" % test_sample_num)
 
