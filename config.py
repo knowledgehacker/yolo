@@ -9,7 +9,8 @@ CKPT_PATH = '%s/%s' % (CKPT_DIR, MODEL_NAME)
 
 PROF_DIR = "prof"
 
-DATA_DIR = 'data/VOC2012'
+DATASET = 'VOC2007'
+DATA_DIR = 'data/%s' % DATASET
 #ANNOT_DIR = '%s/Annotations' % DATA_DIR
 #IMAGE_DIR = '%s/JPEGImages' % DATA_DIR
 # test
