@@ -3,6 +3,9 @@ import os
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 os.environ['CUDA_VISIBLE_DEVICES'] = "0"    # To use GPU, you must set the right slot
 
+import shutil
+import glob
+
 import config
 from input_feed import create_dataset
 from fast_yolo import FastYolo
@@ -104,22 +107,36 @@ def train():
                                                         proids_ph: proids_ts,
                                                         confs_ph: confs_ts,
                                                         coords_ph: coords_ts,
+                                                        dropout_keep_prob_ph: config.TRAIN_KEEP_PROB})
+                    """
+                    _, train_loss = sess.run([train_op, loss_op],
+                                             feed_dict={content_ph: content_ts,
+                                                        image_idx_ph: image_idx_ts,
+                                                        probs_ph: probs_ts,
+                                                        proids_ph: proids_ts,
+                                                        confs_ph: confs_ts,
+                                                        coords_ph: coords_ts,
                                                         dropout_keep_prob_ph: config.TRAIN_KEEP_PROB},
                                              options=run_options,
                                              run_metadata=run_metadata)
+                    """
                     print(current_time(), "Train batch finished!")
 
                     step += 1
                     if step % config.STEPS_PER_CKPT == 0:
+                        delete_obsolete_ckpt_files(step)
+
                         print(current_time(), "step %d, train_loss: %.3f" % (step, train_loss))
                         saver.save(sess, config.CKPT_PATH, global_step=step)
 
+                        """
                         # profiling
                         from tensorflow.python.client import timeline
                         fetched_timeline = timeline.Timeline(run_metadata.step_stats)
                         chrome_trace = fetched_timeline.generate_chrome_trace_format()
                         with open("%s/timeline_%d.json" % (config.PROF_DIR, step), 'w') as f:
                             f.write(chrome_trace)
+                        """
                 except tf.errors.OutOfRangeError:
                     if step % config.STEPS_PER_CKPT != 0:
                         print(current_time(), "step %d, train_loss: %.3f" % (step, train_loss))
@@ -130,6 +147,21 @@ def train():
             save_model(sess, config.MODLE_DIR, config.MODEL_NAME)
 
     print(current_time(), "Training finished!")
+
+
+def delete_obsolete_ckpt_files(step):
+    if step > 1:
+        tmp_dir = "%s/tmp" % config.CKPT_DIR
+        os.mkdir(tmp_dir)
+
+        path = "%s/%s-%d.*" % (config.CKPT_DIR, config.MODEL_NAME, step - config.STEPS_PER_CKPT)
+        #print("path: %s" % path)
+        files = glob.glob(path)
+        for file in files:
+            #print("file: %s" % file)
+            shutil.move(file, tmp_dir)
+
+        shutil.rmtree(tmp_dir)
 
 
 def save_model(sess, model_dir, filename):

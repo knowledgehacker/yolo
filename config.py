@@ -11,12 +11,13 @@ PROF_DIR = "prof"
 
 DATASET = 'VOC2007'
 DATA_DIR = 'data/%s' % DATASET
-#ANNOT_DIR = '%s/Annotations' % DATA_DIR
-#IMAGE_DIR = '%s/JPEGImages' % DATA_DIR
-# test
-ANNOT_DIR = '%s/Annotations' % DATA_DIR
-#IMAGE_TRAIN_DIR = '%s/train' % DATA_DIR
-#IMAGE_TEST_DIR = '%s/test' % DATA_DIR
+
+#ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % DATA_DIR
+#ANNOTATION_TEST_DIR = '%s/test/Annotations' % DATA_DIR
+#IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % DATA_DIR
+#IMAGE_TEST_DIR = '%s/test/JPEGImages' % DATA_DIR
+ANNOTATION_TRAIN_DIR = '%s/tmp/Annotations' % DATA_DIR
+ANNOTATION_TEST_DIR = '%s/tmp/Annotations' % DATA_DIR
 IMAGE_TRAIN_DIR = '%s/tmp/JPEGImages' % DATA_DIR
 IMAGE_TEST_DIR = '%s/tmp/JPEGImages' % DATA_DIR
 
@@ -54,17 +55,6 @@ else:
     exit(-1)
 
 # classes
-"""
-CLASSES = ['person',
-#               0
-              'bird', 'cat', 'cow', 'dog', 'horse', 'sheep',
-#               1       2       3       4       5       6
-              'aeroplane,', 'bicycle', 'boat', 'bus', 'car', 'motorbike', 'train',
-#               7            8            9     10      11      12          13
-              'bottle', 'chair', 'dining table', 'potted plant', 'sofa', 'tv/monitor']
-#               14          15      16                  17          18      19
-"""
-
 CLASSES = ["aeroplane", "bicycle", "bird", "boat", "bottle",
 #               0           1       2       3       4
     "bus", "car", "cat", "chair", "cow", "diningtable", "dog",
@@ -84,10 +74,10 @@ C = len(CLASSES)
 
 THRESHOLD = 0.17
 
-#NUM_EPOCH = 135
-NUM_EPOCH = 1
+#NUM_EPOCH = 90
+NUM_EPOCH = 3
 
-STEPS_PER_CKPT = 10
+STEPS_PER_CKPT = 1
 
 VALIDATE = False
 
