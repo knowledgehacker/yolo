@@ -67,7 +67,7 @@ def train():
         #preds_op, acc_op = model.predict(logits, label_ph)
 
         # create saver
-        saver = tf.train.Saver()
+        saver = tf.train.Saver(max_to_keep=2)
 
     with tf.Session(graph=g, config=cfg) as sess:
         tf.global_variables_initializer().run()
@@ -91,6 +91,10 @@ def train():
                     content_ts, image_idx_ts, probs_ts, proids_ts, confs_ts, coords_ts = sess.run(
                         [content, image_idx, probs, proids, confs, coords], feed_dict={handle_ph: train_handle})
                     print(current_time(), "Read batch finished!")
+                    """
+                    print("--- content_ts")
+                    print(content_ts)
+                    """
 
                     print(current_time(), "Train batch starts ...")
                     _, train_loss = sess.run([train_op, loss_op],

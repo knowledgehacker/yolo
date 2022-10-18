@@ -40,14 +40,11 @@ def create_dataset(image_dir, tfrecord_file, test=False):
 
 def parse_image(image_file):
     image_str = tf.read_file(image_file)
-    decoded_image = tf.image.decode_image(image_str)
-    resized_image = tf.image.resize_image_with_crop_or_pad(decoded_image, config.IMG_H, config.IMG_W)
-    """
-    print("--- resized_image")
-    print(resized_image.shape)
-    """
+    image = tf.image.decode_jpeg(image_str)
+    image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+    image = tf.image.resize_images(image, [config.IMG_H, config.IMG_W])
 
-    return resized_image
+    return image
 
 
 def parse_tfrecords(record_batch):
