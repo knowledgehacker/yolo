@@ -41,7 +41,7 @@ def train():
             tf.data.get_output_classes(train_dataset))
         content, (image_idx, probs, proids, confs, coords) = iterator.get_next(name="next_batch")
         if config.DEVICE_TYPE == "gpu":
-            content = tf.transpose(content, [2, 0, 1])
+            content = tf.transpose(content, [0, 3, 1, 2])
 
         # create model network
         if config.MODEL_NAME == "fast_yolo":

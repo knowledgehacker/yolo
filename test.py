@@ -57,7 +57,7 @@ def test():
         test_iterator = test_dataset.make_initializable_iterator()
         content, (image_idx, probs, proids, confs, coords) = test_iterator.get_next("next_batch")
         if config.DEVICE_TYPE == "gpu":
-            content = tf.transpose(content, [2, 0, 1])
+            content = tf.transpose(content, [0, 3, 1, 2])
 
         #test_handle = sess.run(test_iterator.string_handle())
 
