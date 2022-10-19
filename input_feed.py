@@ -28,9 +28,9 @@ def create_dataset(image_dir, tfrecord_file, test=False):
     if not test:
         dataset = dataset.shuffle(config.SHUFFLE_SIZE)
         dataset = dataset.batch(config.BATCH_SIZE)
-        dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
     else:
         dataset = dataset.batch(config.TEST_BATCH_SIZE)
+    dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
     dataset = dataset.map(lambda image_batch, tfrecord_batch: (image_batch, parse_tfrecords(tfrecord_batch)),
                           num_parallel_calls=tf.data.experimental.AUTOTUNE)

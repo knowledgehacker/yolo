@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
+"""
 import os
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 os.environ['CUDA_VISIBLE_DEVICES'] = "0"    # To use GPU, you must set the right slot
+"""
 
 import shutil
 import glob
@@ -62,7 +64,6 @@ def train():
             tf.placeholder(dtype=tf.float32, shape=(None, SS * B), name="confs_ph"),
             tf.placeholder(dtype=tf.float32, shape=(None, SS * B * 4), name="coords_ph")
         )
-
         dropout_keep_prob_ph = tf.placeholder(tf.float32, name="dropout_keep_prob")
 
         net_out_op = model.forward(content_ph, config.data_format, config.input_shape, dropout_keep_prob_ph)
@@ -70,7 +71,7 @@ def train():
         #preds_op, acc_op = model.predict(logits, label_ph)
 
         # create saver
-        saver = tf.train.Saver(max_to_keep=2)
+        #saver = tf.train.Saver(max_to_keep=1)
 
     with tf.Session(graph=g, config=cfg) as sess:
         tf.global_variables_initializer().run()
@@ -90,16 +91,16 @@ def train():
 
             while True:
                 try:
-                    print(current_time(), "Read batch starts ...")
+                    #print(current_time(), "Read batch starts ...")
                     content_ts, image_idx_ts, probs_ts, proids_ts, confs_ts, coords_ts = sess.run(
                         [content, image_idx, probs, proids, confs, coords], feed_dict={handle_ph: train_handle})
-                    print(current_time(), "Read batch finished!")
+                    #print(current_time(), "Read batch finished!")
                     """
                     print("--- content_ts")
                     print(content_ts)
                     """
 
-                    print(current_time(), "Train batch starts ...")
+                    #print(current_time(), "Train batch starts ...")
                     _, train_loss = sess.run([train_op, loss_op],
                                              feed_dict={content_ph: content_ts,
                                                         image_idx_ph: image_idx_ts,
@@ -120,14 +121,14 @@ def train():
                                              options=run_options,
                                              run_metadata=run_metadata)
                     """
-                    print(current_time(), "Train batch finished!")
+                    #print(current_time(), "Train batch finished!")
 
                     step += 1
                     if step % config.STEPS_PER_CKPT == 0:
-                        delete_obsolete_ckpt_files(step)
+                        #delete_obsolete_ckpt_files(step)
 
                         print(current_time(), "step %d, train_loss: %.3f" % (step, train_loss))
-                        saver.save(sess, config.CKPT_PATH, global_step=step)
+                        #saver.save(sess, config.CKPT_PATH, global_step=step)
 
                         """
                         # profiling
@@ -140,7 +141,7 @@ def train():
                 except tf.errors.OutOfRangeError:
                     if step % config.STEPS_PER_CKPT != 0:
                         print(current_time(), "step %d, train_loss: %.3f" % (step, train_loss))
-                        saver.save(sess, config.CKPT_PATH, global_step=step)
+                        #saver.save(sess, config.CKPT_PATH, global_step=step)
                     break
 
             # save model
@@ -149,6 +150,7 @@ def train():
     print(current_time(), "Training finished!")
 
 
+"""
 def delete_obsolete_ckpt_files(step):
     if step > 1:
         tmp_dir = "%s/tmp" % config.CKPT_DIR
@@ -162,6 +164,7 @@ def delete_obsolete_ckpt_files(step):
             shutil.move(file, tmp_dir)
 
         shutil.rmtree(tmp_dir)
+"""
 
 
 def save_model(sess, model_dir, filename):

@@ -3,8 +3,6 @@ import xml.etree.ElementTree as et
 import cv2
 import matplotlib.pyplot as plt
 
-import config
-
 
 class Rectangle(object):
     def __init__(self, left, top, right, bottom):
@@ -21,11 +19,13 @@ class Rectangle(object):
 
         return centre_x, centre_y, box_width, box_height
 
+    """
     def rescale(self, rescale_x, rescale_y):
         rec = Rectangle(self.left * rescale_x, self.top * rescale_y,
                         self.right * rescale_x, self.bottom * rescale_y)
 
         return rec
+    """
 
 
 def parse_annotation(annotation_file):
@@ -37,26 +37,26 @@ def parse_annotation(annotation_file):
     root = tree.getroot()
 
     size = root.find('size')
-    iw = int(size.find("width").text)
-    ih = int(size.find("height").text)
+    image_w = int(size.find("width").text)
+    image_h = int(size.find("height").text)
+    #print("image_w: %d, image_h" % image_w, image_h)
 
     for obj in root.iter('object'):
         cls = obj.find('name').text
-        #print("class: %s" % cls)
         difficult = int(obj.find('difficult').text)
-        #print("difficult: %d" % difficult)
         bounding_box = obj.find('bndbox')
         left = float(bounding_box.find('xmin').text)
         top = float(bounding_box.find('ymin').text)
         right = float(bounding_box.find('xmax').text)
         bottom = float(bounding_box.find('ymax').text)
+        #print("class: %s, difficult: %d" % (cls, difficult))
         #print("left: %f, top: %f, right: %f, bottom: %f" % (left, top, right, bottom))
 
-        obj_infos.append((cls, difficult, Rectangle(left, top, right, bottom), (iw, ih)))
+        obj_infos.append((cls, difficult, Rectangle(left, top, right, bottom)))
 
     f.close()
 
-    return iw, ih, obj_infos
+    return image_w, image_h, obj_infos
 
 
 def draw_box_with_image(image, rec):

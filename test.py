@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
+"""
 import os
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 os.environ['CUDA_VISIBLE_DEVICES'] = "0"    # To use GPU, you must set the right slot
+"""
 
 import config
 from input_feed import create_dataset

@@ -75,8 +75,9 @@ C = len(CLASSES)
 THRESHOLD = 0.17
 
 #NUM_EPOCH = 90
-NUM_EPOCH = 3
+NUM_EPOCH = 1
 
+#STEPS_PER_CKPT = 10
 STEPS_PER_CKPT = 1
 
 VALIDATE = False
@@ -95,11 +96,3 @@ LEARNING_RATE = 1e-3
 TRAIN_KEEP_PROB = 0.5
 TEST_KEEP_PROB = 1.0
 
-if MODEL_NAME == 'fast_yolo':
-    HIDDEN_SIZE = 64
-
-    CONV_FILTER_NUM = 128
-    CONV_FILTER_KERNEL_SIZES = [2, 3, 4]
-else:
-    print("Unsupported model %s" % MODEL_NAME)
-    exit(-1)

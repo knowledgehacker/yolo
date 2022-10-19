@@ -115,7 +115,7 @@ def get_objs(annotation_dir, image_name):
     annotation_file = "%s/%s.xml" % (annotation_dir, image_name)
     w, h, obj_infos = parse_annotation(annotation_file)
     for obj_info in obj_infos:
-        class_name, difficult, rec, image_shape = obj_info
+        class_name, difficult, rec = obj_info
         if difficult != 1:
             class_names.append(class_name)
             recs.append(rec)
