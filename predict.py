@@ -71,8 +71,7 @@ def postprocess(image_file, net_out, save=True):
 
 	if not save: return image
 
-	outfolder = os.path.join(config.DATA_DIR, 'out')
-	image_name = os.path.join(outfolder, os.path.basename(image_file))
+	image_name = os.path.join(config.IMAGE_OUT_DIR, os.path.basename(image_file))
 	if config.JSON:
 		textJSON = json.dumps(resultsForJSON)
 		textFile = os.path.splitext(image_name)[0] + ".json"

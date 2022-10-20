@@ -109,9 +109,10 @@ def load_ckpt_model(sess, ckpt_dir):
 
 
 def write_preds(image_idx_ts, net_out_ts, image_idx_to_name):
-    for (image_idx, net_out) in zip(image_idx_ts, net_out_ts):
+    for (image_idx, net_out) in zip(image_idx_ts, net_out_ts[0]):
         image_file = "%s/%s" % (config.IMAGE_TEST_DIR, image_idx_to_name[image_idx])
-        postprocess(image_file, net_out[0])
+        #print("image_idx: %d, image_file: %s" % (image_idx, image_file))
+        postprocess(image_file, net_out)
 
 
 def main():

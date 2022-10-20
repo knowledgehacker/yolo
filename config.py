@@ -29,6 +29,8 @@ TF_IMAGE_TEST_FILE = '%s/tf/test/objects.tfrecords' % DATA_DIR
 
 IMAGE_INDEX_FILE = "%s/image_indexes" % DATA_DIR
 
+IMAGE_OUT_DIR = "%s/out" % DATA_DIR
+
 JSON = False
 
 # term scale in loss formula
