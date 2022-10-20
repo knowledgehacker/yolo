@@ -25,10 +25,10 @@ ext_modules = [
 
 setup(
     version=VERSION,
-	name='yolo_v1',
+    name='yolo_v1',
     description='YOLO V1',
     license='GPLv3',
     url='https://github.com/knowledgehacker/yolo_v1',
     packages=find_packages(),
-    ext_modules = cythonize(ext_modules)
+    ext_modules=cythonize(ext_modules)
 )
