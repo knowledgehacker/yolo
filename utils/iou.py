@@ -7,24 +7,25 @@ tf.disable_v2_behavior()
 
 def _extract_coords(coords):
     # w, h is normalized to sqrt(w/config.S), sqrt(h/config.S) when preprocess, we should restore w, h to calculate area
-    wh = tf.pow(coords[:, :, :, 2:4], 2) * config.S  # unit: grid cell
+    #wh = tf.pow(coords[:, :, :, 2:4], 2) * config.S  # unit: grid cell
+    wh = coords[:, :, :, 2:4] ** 2 * config.S  # unit: grid cell
     area = wh[:, :, :, 0] * wh[:, :, :, 1]  # unit: grid cell^2
     xy_centre = coords[:, :, :, 0:2]  # [batch, SS, B, 2]
-    top_left = xy_centre - (wh * 0.5)  # [batch, SS, B, 2]
-    bottom_right = xy_centre + (wh * 0.5)  # [batch, SS, B, 2]
+    left_top = xy_centre - (wh * 0.5)  # [batch, SS, B, 2]
+    right_bottom = xy_centre + (wh * 0.5)  # [batch, SS, B, 2]
 
-    return top_left, bottom_right, area
+    return left_top, right_bottom, area
 
 
-def _calc_intersects(top_left_1, bottom_right_1, top_left_2, bottom_right_2):
-    top_left_intersect = tf.maximum(top_left_1, top_left_2)
-    bottom_right_intersect = tf.minimum(bottom_right_1, bottom_right_2)
-    wh_intersect = bottom_right_intersect - top_left_intersect
+def _calc_intersects(left_top_1, right_bottom_1, left_top_2, right_bottom_2):
+    left_top_intersect = tf.maximum(left_top_1, left_top_2)
+    right_bottom_intersect = tf.minimum(right_bottom_1, right_bottom_2)
+    wh_intersect = right_bottom_intersect - left_top_intersect
     wh_intersect = tf.maximum(wh_intersect, 0.0)
     # * is equivalent to tf.multiply
     area_intersect = wh_intersect[:, :, :, 0] * wh_intersect[:, :, :, 1]
 
-    return top_left_intersect, bottom_right_intersect, area_intersect
+    return left_top_intersect, right_bottom_intersect, area_intersect
 
 
 def _find_best_box_iou(area_1, area_2, area_intersect):
@@ -36,10 +37,10 @@ def _find_best_box_iou(area_1, area_2, area_intersect):
 
 
 def calc_best_box_iou(coords_predict, coords_true):
-    top_left_predict, bottom_right_predict, area_predict = _extract_coords(coords_predict)
-    top_left_true, bottom_right_true, area_true = _extract_coords(coords_true)
-    _, _, area_intersect = _calc_intersects(top_left_predict, bottom_right_predict,
-                                            top_left_true, bottom_right_true)
+    left_top_predict, right_bottom_predict, area_predict = _extract_coords(coords_predict)
+    left_top_true, right_bottom_true, area_true = _extract_coords(coords_true)
+    _, _, area_intersect = _calc_intersects(left_top_predict, right_bottom_predict,
+                                            left_top_true, right_bottom_true)
     best_box_iou = _find_best_box_iou(area_predict, area_true, area_intersect)
 
     return best_box_iou

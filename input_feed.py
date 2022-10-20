@@ -41,8 +41,8 @@ def create_dataset(image_dir, tfrecord_file, test=False):
 def parse_image(image_file):
     image_str = tf.read_file(image_file)
     image = tf.image.decode_jpeg(image_str, channels=3)
-    image = tf.image.convert_image_dtype(image, dtype=tf.float32)
-    image = tf.image.resize_images(image, [config.IMG_H, config.IMG_W])
+    image = tf.image.resize(image, [config.IMG_H, config.IMG_W])
+    image = image / 255.0
 
     return image
 

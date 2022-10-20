@@ -89,7 +89,8 @@ class FastYolo(object):
         print("--- weights shape")
         print(weights.shape)
 
-        loss = tf.pow(net_out - true, 2)
+        #loss = tf.pow(net_out - true, 2)
+        loss = (net_out - true) ** 2
         loss = loss * weights
         loss = tf.reduce_sum(loss, 1)
         loss_op = 0.5 * tf.reduce_mean(loss, name="loss")

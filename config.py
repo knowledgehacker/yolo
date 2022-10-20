@@ -74,7 +74,8 @@ B = 2
 # class num
 C = len(CLASSES)
 
-THRESHOLD = 0.17
+#THRESHOLD = 0.17
+THRESHOLD = 0.0
 
 #NUM_EPOCH = 90
 NUM_EPOCH = 1
