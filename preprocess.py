@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import os
 import numpy as np
 from math import sqrt
 
@@ -50,9 +49,9 @@ def build_dataset(image_dir, annotation_dir, output, data_type):
 
         fout.write("%s\t%d\n" % (image_file_name, i))
 
-        probs = np.zeros((SS, C))
-        proids = np.zeros((SS, C))
-        confs = np.zeros((SS, B))
+        class_probs = np.zeros((SS, C))
+        class_proids = np.zeros((SS, C))
+        object_proids = np.zeros((SS, B))
         coords = np.zeros((SS, B, 4))
 
         for class_name, rec in zip(class_names, recs):
@@ -60,15 +59,15 @@ def build_dataset(image_dir, annotation_dir, output, data_type):
             x, y, w, h = rec.corner_to_centre()
 
             # grid size is calculated using original instead of resized image's size
-            grid_w, grid_h = float(image_w / S), float(image_h / S)
+            grid_w, grid_h = 1.0 * image_w / S, 1.0 * image_h / S
             grid_x, grid_y = int(x / grid_w), int(y / grid_h)
             grid = grid_y * S + grid_x
 
-            probs[grid, class_to_index[class_name]] = 1.0
-            proids[grid, :] = [1.0] * C
+            class_probs[grid, class_to_index[class_name]] = 1.0
+            class_proids[grid, :] = [1.0] * C
 
             # for a ground truth bounding box, replicate B copies
-            confs[grid, :] = [1.0] * B
+            object_proids[grid, :] = [1.0] * B
 
             """
             normalization as follows:
@@ -77,15 +76,15 @@ def build_dataset(image_dir, annotation_dir, output, data_type):
             """
             norm_x, norm_y = x / grid_w, y / grid_h
             norm_x, norm_y = norm_x - np.floor(norm_x), norm_y - np.floor(norm_y)
-            norm_w, norm_h = sqrt(float(w / image_w)), float(sqrt(h / image_h))
+            norm_w, norm_h = sqrt(float(w / image_w)), sqrt(float(h / image_h))
             coords[grid, :, :] = [[norm_x, norm_y, norm_w, norm_h]] * B
 
         example = tf.train.Example(features=tf.train.Features(
             feature={
                 'image_idx': int64_feature([i]),
-                'probs': float_feature(probs.flatten()),
-                'proids': float_feature(proids.flatten()),
-                'confs': float_feature(confs.flatten()),
+                'class_probs': float_feature(class_probs.flatten()),
+                'class_proids': float_feature(class_proids.flatten()),
+                'object_proids': float_feature(object_proids.flatten()),
                 'coords': float_feature(coords.flatten())
             }))
         writer.write(example.SerializeToString())
@@ -135,4 +134,6 @@ train_sample_num = build_dataset(config.IMAGE_TRAIN_DIR, config.ANNOTATION_TRAIN
 print("train_sample_num: %d" % train_sample_num)
 test_sample_num = build_dataset(config.IMAGE_TEST_DIR, config.ANNOTATION_TEST_DIR, config.TF_IMAGE_TEST_FILE, "test")
 print("test_sample_num: %d" % test_sample_num)
+tmp_sample_num = build_dataset(config.IMAGE_TMP_DIR, config.ANNOTATION_TMP_DIR, config.TF_IMAGE_TMP_FILE, "tmp")
+print("tmp_sample_num: %d" % tmp_sample_num)
 

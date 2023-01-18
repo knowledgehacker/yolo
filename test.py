@@ -1,14 +1,9 @@
 # -*- coding: utf-8 -*-
-"""
-import os
-os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"    # To use GPU, you must set the right slot
-"""
 
 import config
 from input_feed import create_dataset
 from predict import postprocess
-from utils.misc import current_time, with_prefix, load_image_indexes
+from utils.misc import current_time, load_image_indexes, with_prefix, load_model
 
 """
 import tensorflow as tf
@@ -26,12 +21,16 @@ cfg.gpu_options.allow_growth = True
 def test():
     print(current_time(), "Testing starts ...")
 
-    image_index2names = dict(load_image_indexes("%s-%s.txt" % (config.IMAGE_INDEX_FILE, "test")))
+    # TODO: test images in tmp directory
+    index_file = "%s-%s.txt" % (config.IMAGE_INDEX_FILE, "tmp")
+    print("index_file: %s" % index_file)
+    image_index2names = load_image_indexes(index_file)
+    print("--- image_index2names")
+    print(image_index2names)
 
-    g = tf.Graph()
+    outputs = ["net_out", "loss"]
+    g = load_model(config.MODLE_DIR, config.MODEL_NAME, outputs)
     with tf.Session(graph=g, config=cfg) as sess:
-        # load trained model
-        load_model(sess, config.MODLE_DIR, config.MODEL_NAME)
         #load_ckpt_model(sess, config.CKPT_DIR)
 
         # get prediction and other dependent tensors from the graph in the trained model for inference
@@ -42,11 +41,11 @@ def test():
 
         content_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "content_ph:0"))
         #image_idx_ph, \
-        probs_ph, proids_ph, confs_ph, coords_ph = (
+        class_probs_ph, class_proids_ph, object_proids_ph, coords_ph = (
             #g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "image_idx_ph:0")),
-            g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "probs_ph:0")),
-            g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "proids_ph:0")),
-            g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "confs_ph:0")),
+            g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "class_probs_ph:0")),
+            g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "class_proids_ph:0")),
+            g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "object_proids_ph:0")),
             g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "coords_ph:0"))
         )
         dropout_keep_prob_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "dropout_keep_prob:0"))
@@ -55,7 +54,8 @@ def test():
 
         # create iterator for test dataset
         #handle_ph = g.get_tensor_by_name("handle_ph:0")
-        test_dataset = create_dataset(config.IMAGE_TEST_DIR, config.TF_IMAGE_TEST_FILE, test=True)
+        # TODO: test images in tmp directory
+        test_dataset = create_dataset(config.IMAGE_TMP_DIR, config.TF_IMAGE_TMP_FILE, image_index2names, test=True)
         test_iterator = test_dataset.make_initializable_iterator()
         content, (image_idx, probs, proids, confs, coords) = test_iterator.get_next("next_batch")
         if config.DEVICE_TYPE == "gpu":
@@ -70,35 +70,21 @@ def test():
         try:
             while True:
                 # we don't need to feed test_handle to handle_ph here
-                content_ts, image_idx_ts, probs_ts, proids_ts, confs_ts, coords_ts = sess.run([content, image_idx, probs, proids, confs, coords])
+                content_ts, image_idx_ts, class_probs_ts, class_proids_ts, object_proids_ts, coords_ts = sess.run([content, image_idx, probs, proids, confs, coords])
                 net_out_ts = sess.run([net_out_op], feed_dict={#image_idx_ph: image_idx_ts,
                                                                content_ph: content_ts,
-                                                               probs_ph: probs_ts,
-                                                               proids_ph: proids_ts,
-                                                               confs_ph: confs_ts,
+                                                               class_probs_ph: class_probs_ts,
+                                                               class_proids_ph: class_proids_ts,
+                                                               object_proids_ph: object_proids_ts,
                                                                coords_ph: coords_ts,
                                                                dropout_keep_prob_ph: config.TEST_KEEP_PROB})
-                print("--- net_out_ts")
-                print(net_out_ts)
-                write_preds(image_idx_ts, net_out_ts, image_index2names)
+                print("--- len(net_out_ts)")
+                print(len(net_out_ts))
+                write_preds(image_idx_ts, net_out_ts, dict(image_index2names))
         except tf.errors.OutOfRangeError:
             pass
 
     print(current_time(), "Testing finished!")
-
-
-def load_model(sess, model_dir, filename):
-    model_filepath = "%s/%s.pb" % (model_dir, filename)
-
-    print("Loading model %s ..." % model_filepath)
-
-    with tf.gfile.GFile(model_filepath, 'rb') as fin:
-        graph_def = sess.graph.as_graph_def()
-        graph_def.ParseFromString(fin.read())
-
-    tf.import_graph_def(graph_def, name=config.MODEL_NAME)
-
-    print("Model %s loaded!" % model_filepath)
 
 
 def load_ckpt_model(sess, ckpt_dir):
@@ -110,8 +96,10 @@ def load_ckpt_model(sess, ckpt_dir):
 
 def write_preds(image_idx_ts, net_out_ts, image_idx_to_name):
     for (image_idx, net_out) in zip(image_idx_ts, net_out_ts[0]):
-        image_file = "%s/%s" % (config.IMAGE_TEST_DIR, image_idx_to_name[image_idx])
-        #print("image_idx: %d, image_file: %s" % (image_idx, image_file))
+        # TODO: test images in tmp directory
+        image_file = "%s/%s" % (config.IMAGE_TMP_DIR, image_idx_to_name[image_idx])
+        #image_file = "%s/%s" % (config.IMAGE_TEST_DIR, image_idx_to_name[image_idx])
+        print("image_idx: %d, image_file: %s" % (image_idx, image_file))
         postprocess(image_file, net_out)
 
 

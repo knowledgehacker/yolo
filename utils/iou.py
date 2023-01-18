@@ -6,8 +6,8 @@ tf.disable_v2_behavior()
 
 
 def _extract_coords(coords):
-    # w, h is normalized to sqrt(w/config.S), sqrt(h/config.S) when preprocess, we should restore w, h to calculate area
-    #wh = tf.pow(coords[:, :, :, 2:4], 2) * config.S  # unit: grid cell
+    # w, h is normalized to sqrt(w/config.IMG_W), sqrt(h/config.IMG_W) upon preprocess, we should restore w, h to calculate area
+    # grid_w = config.IMG_W / config.S, grid_h = config.IMG_H / config.S
     wh = coords[:, :, :, 2:4] ** 2 * config.S  # unit: grid cell
     area = wh[:, :, :, 0] * wh[:, :, :, 1]  # unit: grid cell^2
     xy_centre = coords[:, :, :, 0:2]  # [batch, SS, B, 2]
@@ -22,7 +22,6 @@ def _calc_intersects(left_top_1, right_bottom_1, left_top_2, right_bottom_2):
     right_bottom_intersect = tf.minimum(right_bottom_1, right_bottom_2)
     wh_intersect = right_bottom_intersect - left_top_intersect
     wh_intersect = tf.maximum(wh_intersect, 0.0)
-    # * is equivalent to tf.multiply
     area_intersect = wh_intersect[:, :, :, 0] * wh_intersect[:, :, :, 1]
 
     return left_top_intersect, right_bottom_intersect, area_intersect

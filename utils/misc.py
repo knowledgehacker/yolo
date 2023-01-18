@@ -3,6 +3,9 @@
 import os
 import time
 
+import tensorflow._api.v2.compat.v1 as tf
+tf.disable_v2_behavior()
+
 import config
 
 
@@ -34,6 +37,8 @@ def load_image_indexes(index_file):
 
     fin = open(index_file, 'r')
     for line in fin:
+        #print("--- line")
+        #print(line)
         line = line.strip()
         name, idx_str = line.split('\t')
         idx = int(idx_str)
@@ -47,3 +52,44 @@ def with_prefix(prefix, op):
     return "%s/%s" % (prefix, op)
     #return op
 
+
+def load_model(model_dir, model_name, outputs):
+    model_filepath = "%s/%s.pb" % (model_dir, model_name)
+
+    print("Loading model %s ..." % model_filepath)
+
+    with tf.gfile.FastGFile(model_filepath, 'rb') as fin:
+        graph_def = tf.GraphDef()
+        graph_def.ParseFromString(fin.read())
+
+    g = tf.Graph()
+    with g.as_default():
+        tf.import_graph_def(graph_def, return_elements=outputs, name=model_name)
+
+    print("Model %s loaded!" % model_filepath)
+
+    return g
+
+
+def save_model(sess, model_dir, model_name, outputs):
+    output_graph_def = tf.graph_util.convert_variables_to_constants(
+        sess,
+        sess.graph_def,
+        outputs)
+
+    model_filepath = "%s/%s.pb" % (model_dir, model_name)
+    with tf.gfile.GFile(model_filepath, "wb") as fout:
+        fout.write(output_graph_def.SerializeToString())
+
+
+def get_optimizer():
+    if config.OPTIMIZER == 'rmsprop':
+        optimizer = tf.train.RMSPropOptimizer(learning_rate=config.LR, decay=config.DECAY, momentum=config.MOMENTUM)
+    elif config.OPTIMIZER == 'adam':
+        optimizer = tf.train.AdamOptimizer(learning_rate=config.LR)
+    elif config.OPTIMIZER == 'adagrad':
+        optimizer = tf.train.AdagradOptimizer(learning_rate=config.LR, initial_accumulator_value=1e-8)
+    else:
+        print("Unsupported optimizer: %s" % config.OPTIMIZER)
+
+    return optimizer
