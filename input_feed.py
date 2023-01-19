@@ -10,16 +10,21 @@ SS, B, C = config.S * config.S, config.B, config.C
 
 
 def create_dataset(image_dir, tfrecord_file, image_index2names, test=False):
+    print("image_dir: %s, tfrecord_file: %s" % (image_dir, tfrecord_file))
+
     # load and parse image files
     image_file_names = [file_name for index, file_name in image_index2names]
     image_files = ["%s/%s" % (image_dir, file_name) for file_name in image_file_names]
     image_dataset = tf.data.Dataset.from_tensor_slices(image_files)
-    image_dataset = image_dataset.map(parse_image)
 
     # load and parse tfrecord files
     tfrecord_dataset = tf.data.TFRecordDataset(tfrecord_file)
 
     dataset = tf.data.Dataset.zip((image_dataset, tfrecord_dataset))
+
+    # parse image one by one
+    dataset = dataset.map(lambda image, tfrecord: (parse_image(image), tfrecord))
+
     if not test:
         dataset = dataset.shuffle(config.SHUFFLE_SIZE)
         dataset = dataset.batch(config.BATCH_SIZE)
@@ -27,6 +32,7 @@ def create_dataset(image_dir, tfrecord_file, image_index2names, test=False):
         dataset = dataset.batch(config.TEST_BATCH_SIZE)
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
+    # parse tfrecord in batch
     dataset = dataset.map(lambda image_batch, tfrecord_batch: (image_batch, parse_tfrecords(tfrecord_batch)),
                           num_parallel_calls=tf.data.experimental.AUTOTUNE)
 

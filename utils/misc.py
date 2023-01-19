@@ -40,7 +40,7 @@ def load_image_indexes(index_file):
         #print("--- line")
         #print(line)
         line = line.strip()
-        name, idx_str = line.split('\t')
+        idx_str, name = line.split('\t')
         idx = int(idx_str)
         image_index2names.append((idx, name))
     fin.close()

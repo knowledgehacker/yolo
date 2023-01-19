@@ -78,8 +78,8 @@ def test():
                                                                object_proids_ph: object_proids_ts,
                                                                coords_ph: coords_ts,
                                                                dropout_keep_prob_ph: config.TEST_KEEP_PROB})
-                print("--- len(net_out_ts)")
-                print(len(net_out_ts))
+                print("--- net_out_ts")
+                print(net_out_ts)
                 write_preds(image_idx_ts, net_out_ts, dict(image_index2names))
         except tf.errors.OutOfRangeError:
             pass
@@ -103,10 +103,5 @@ def write_preds(image_idx_ts, net_out_ts, image_idx_to_name):
         postprocess(image_file, net_out)
 
 
-def main():
-    # test
-    test()
-
-
 if __name__ == "__main__":
-    main()
+    test()

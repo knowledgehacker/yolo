@@ -81,9 +81,11 @@ def train():
         train_handle = sess.run(train_iterator.string_handle())
         #test_handle = sess.run(test_iterator.string_handle())
 
+        """
         # parameters for profiling
         run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
         run_metadata = tf.RunMetadata()
+        """
 
         step = 0
         for i in range(config.NUM_EPOCH):
@@ -139,10 +141,5 @@ def train():
     print(current_time(), "Training finished!")
 
 
-def main():
-    # train
-    train()
-
-
 if __name__ == "__main__":
-    main()
+    train()

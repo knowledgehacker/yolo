@@ -28,11 +28,12 @@ def build_dataset(image_dir, annotation_dir, output, data_type):
     print(current_time(), "Build %s dataset: %s starts ..." % (data_type, image_dir))
 
     sample_num = 0
-    bad_sample_num = 0
-
-    writer = tf.python_io.TFRecordWriter(output)
+    bad_class_sample_num = 0
+    bad_coordinate_sample_num = 0
 
     fout = open("%s-%s.txt" % (config.IMAGE_INDEX_FILE, data_type), 'w')
+
+    writer = tf.python_io.TFRecordWriter(output)
 
     # load image files
     image_files = load_files(image_dir)
@@ -43,11 +44,10 @@ def build_dataset(image_dir, annotation_dir, output, data_type):
         image_name = image_file_name[:image_file_name.rindex('.')]
         image_w, image_h, class_names, recs = get_objs(annotation_dir, image_name)
         if len(class_names) == 0:
+            print("bad class - %s" % image_file_name)
             print(image_file_name)
-            bad_sample_num += 1
+            bad_class_sample_num += 1
             continue
-
-        fout.write("%s\t%d\n" % (image_file_name, i))
 
         class_probs = np.zeros((SS, C))
         class_proids = np.zeros((SS, C))
@@ -60,8 +60,12 @@ def build_dataset(image_dir, annotation_dir, output, data_type):
 
             # grid size is calculated using original instead of resized image's size
             grid_w, grid_h = 1.0 * image_w / S, 1.0 * image_h / S
-            grid_x, grid_y = int(x / grid_w), int(y / grid_h)
-            grid = grid_y * S + grid_x
+            grid_x, grid_y = x / grid_w, y / grid_h
+            if grid_x >= S or grid_y >= S:
+                print("bad coordinate - %s" % image_file_name)
+                bad_coordinate_sample_num += 1
+                continue
+            grid = int(np.floor(grid_y) * S + np.floor(grid_x))
 
             class_probs[grid, class_to_index[class_name]] = 1.0
             class_proids[grid, :] = [1.0] * C
@@ -74,8 +78,7 @@ def build_dataset(image_dir, annotation_dir, output, data_type):
             (x, y): divided by grid size, then relative to the object grid.
             (w, h): sqrt(w / image_w), sqrt(h / image_h)
             """
-            norm_x, norm_y = x / grid_w, y / grid_h
-            norm_x, norm_y = norm_x - np.floor(norm_x), norm_y - np.floor(norm_y)
+            norm_x, norm_y = grid_x - np.floor(grid_x), grid_y - np.floor(grid_y)
             norm_w, norm_h = sqrt(float(w / image_w)), sqrt(float(h / image_h))
             coords[grid, :, :] = [[norm_x, norm_y, norm_w, norm_h]] * B
 
@@ -89,19 +92,22 @@ def build_dataset(image_dir, annotation_dir, output, data_type):
             }))
         writer.write(example.SerializeToString())
 
+        fout.write("%d\t%s\n" % (i, image_file_name))
+
         sample_num += 1
 
         if sample_num % config.BATCH_SIZE == 0:
             print(current_time(), "batch %d: %s samples generated!" % (int(sample_num / config.BATCH_SIZE), sample_num))
 
-    fout.close()
-
     writer.close()
+
+    fout.close()
 
     if sample_num % config.BATCH_SIZE != 0:
         print("batch %d: %s samples generated!" % (int(i / config.BATCH_SIZE + 1), sample_num))
 
-    print("sample_num: %d, bad_sample_num: %d" % (sample_num, bad_sample_num))
+    print("sample_num: %d, bad_class_sample_num: %d, bad_coordinate_sample_num: %d"
+          % (sample_num, bad_class_sample_num, bad_coordinate_sample_num))
 
     print(current_time(), "Build %s dataset: %s finished!" % (data_type, image_dir))
 
@@ -131,9 +137,6 @@ def float_feature(value):
 
 
 train_sample_num = build_dataset(config.IMAGE_TRAIN_DIR, config.ANNOTATION_TRAIN_DIR, config.TF_IMAGE_TRAIN_FILE, "train")
-print("train_sample_num: %d" % train_sample_num)
-test_sample_num = build_dataset(config.IMAGE_TEST_DIR, config.ANNOTATION_TEST_DIR, config.TF_IMAGE_TEST_FILE, "test")
-print("test_sample_num: %d" % test_sample_num)
-tmp_sample_num = build_dataset(config.IMAGE_TMP_DIR, config.ANNOTATION_TMP_DIR, config.TF_IMAGE_TMP_FILE, "tmp")
-print("tmp_sample_num: %d" % tmp_sample_num)
+#test_sample_num = build_dataset(config.IMAGE_TEST_DIR, config.ANNOTATION_TEST_DIR, config.TF_IMAGE_TEST_FILE, "test")
+#tmp_sample_num = build_dataset(config.IMAGE_TMP_DIR, config.ANNOTATION_TMP_DIR, config.TF_IMAGE_TMP_FILE, "tmp")
 

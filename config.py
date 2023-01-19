@@ -12,14 +12,17 @@ PROF_DIR = "prof"
 DATASET = 'VOC2007'
 DATA_DIR = 'data/%s' % DATASET
 
-ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % DATA_DIR
+#ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % DATA_DIR
+ANNOTATION_TRAIN_DIR = 'data/VOC2012/train/Annotations'
 ANNOTATION_TEST_DIR = '%s/test/Annotations' % DATA_DIR
 ANNOTATION_TMP_DIR = '%s/tmp/Annotations' % DATA_DIR
-IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % DATA_DIR
+#IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % DATA_DIR
+IMAGE_TRAIN_DIR = 'data/VOC2012/train/JPEGImages'
 IMAGE_TEST_DIR = '%s/test/JPEGImages' % DATA_DIR
 IMAGE_TMP_DIR = '%s/tmp/JPEGImages' % DATA_DIR
 
-TF_IMAGE_TRAIN_FILE = '%s/tf/train/objects.tfrecords' % DATA_DIR
+#TF_IMAGE_TRAIN_FILE = '%s/tf/train/objects.tfrecords' % DATA_DIR
+TF_IMAGE_TRAIN_FILE = 'data/VOC2012/tf/train/objects.tfrecords'
 TF_IMAGE_TEST_FILE = '%s/tf/test/objects.tfrecords' % DATA_DIR
 TF_IMAGE_TMP_FILE = '%s/tf/tmp/objects.tfrecords' % DATA_DIR
 
@@ -70,13 +73,13 @@ B = 2
 # class num
 C = len(CLASSES)
 
-#THRESHOLD = 0.17
-THRESHOLD = 0.0
+THRESHOLD = 0.17
+#THRESHOLD = 0.0
 
-#NUM_EPOCH = 90
-NUM_EPOCH = 5
+NUM_EPOCH = 90
+#NUM_EPOCH = 5
 
-STEPS_PER_CKPT = 10
+STEPS_PER_CKPT = 30
 #STEPS_PER_CKPT = 1
 
 VALIDATE = False

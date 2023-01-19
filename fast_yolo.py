@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import config
 from base_network import BaseNetwork
-from utils.iou import calc_best_box_iou
+from utils.iou import find_best_box
 
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()
@@ -42,40 +42,51 @@ class FastYolo(object):
         nd_coords = tf.reshape(coords, shape=[-1, SS, B, 4])
 
         """
-        The following code calculate weight vector of three parts: coordinate, confidence, class
-        initial weight vector is passed from input, we adjust it by scale parameters and iou.
+        The following code calculate weight vector of three parts: class, coordinate, confidence,
+        initial weight vector is passed from input, we adjust it by scale parameters and best box with highest iou.
         take care of the weight terms, construct indicator matrix(which grids the objects in, which ones not in).
         """
 
         """
-        confidence weight, nd_confids get the bounding box that has the highest iou
+        class weight, class is in grid unit instead of bounding box unit,
+        so we don't need to multiply nd_confids here.
         """
-        # TODO: adjust object_proids during train on the fly???
+        nd_class_weight = class_scale * nd_class_proids
+
+        """
+        confidence weight, nd_confids get the bounding box that has the highest iou.
+
+        TODO: adjust object_proids during train on the fly??? yes, mask the boxes except the highest iou one with 0.0.
+        as to B=2 bounding boxes, the last dimension of best_box looks like [0.0, 1.0] or [1.0, 0.0].
+        """
         nd_coords_predict = tf.reshape(net_out[:, SS * (C + B):], shape=[-1, SS, B, 4])
-        best_boxes_iou = calc_best_box_iou(nd_coords_predict, nd_coords)
-        print("--- best_boxes_iou shape")
-        print(best_boxes_iou.shape)
-        # confidence = P(Object) * IOU(pred, true), * is equivalent to tf.multiply
-        nd_confids = best_boxes_iou * nd_object_proids
+        best_box = find_best_box(nd_coords_predict, nd_coords)
+        print("--- best_box shape")
+        print(best_box.shape)
+        nd_confids = best_box * nd_object_proids
+        print("--- nd_object_proids.shape")
+        print(nd_object_proids.shape)
+        print("--- nd_confids.shape")
+        print(nd_confids.shape)
         nd_confid_weight = noobj_scale * (1.0 - nd_confids) + nd_confids
 
         """
         coordinate weight, we need to multiply nd_confids here,
-        since we only penalizes the bounding box has the highest iou
+        since we only penalizes the bounding box has the highest iou.
         """
-        bounding_box_coord = tf.concat(4 * [tf.expand_dims(nd_confids, -1)], 2)
+        bounding_box_coord = tf.concat(4 * [tf.expand_dims(nd_confids, -1)], 3)
+        print("--- bounding_box_coord")
+        print(bounding_box_coord.shape)
         nd_coord_weight = coord_scale * bounding_box_coord
 
-        """
-        class weight, class is in grid unit instead of bounding box unit,
-        so we don't need to multiply nd_confids here
-        """
-        nd_class_weight = class_scale * nd_class_proids
-
         # reconstruct label with adjusted confs. Q: nd_object_proids or nd_confids in true???
-        true = tf.concat([tf.layers.flatten(nd_class_probs), tf.layers.flatten(nd_confids), tf.layers.flatten(nd_coords)], 1)
-        weights = tf.concat([tf.layers.flatten(nd_class_weight), tf.layers.flatten(nd_confid_weight), tf.layers.flatten(nd_coord_weight)], 1)
+        true = tf.concat([flat(nd_class_probs), flat(nd_confids), flat(nd_coords)], 1)
+        weights = tf.concat([flat(nd_class_weight), flat(nd_confid_weight), flat(nd_coord_weight)], 1)
         weighted_square_error = weights * ((net_out - true) ** 2)
         loss_op = 0.5 * tf.reduce_mean(tf.reduce_sum(weighted_square_error, 1), name="loss")
 
         return loss_op
+
+
+def flat(x):
+    return tf.layers.flatten(x)
