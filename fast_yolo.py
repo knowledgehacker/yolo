@@ -27,19 +27,21 @@ class FastYolo(object):
     If we start at a high learning rate our model often diverges due to unstable gradients.
     We continue training with 10^-2 for 75 epochs, then 10^-3 for 30 epochs, and finally 10^-4 for 30 epochs.
     """
-    def opt(self, net_out, class_probs, class_proids, object_proids, coords):
+    #def opt(self, net_out, class_probs, class_proids, object_proids, coords):
+    def opt(self, net_out, nd_class_probs, nd_class_proids, nd_object_proids, nd_coords):
         # parameters
         coord_scale = config.coord_scale
         #conf_scale = config.object_scale # object scale set to default value 1.0
         noobj_scale = config.noobject_scale
         class_scale = config.class_scale
         print('scales  = {}'.format([coord_scale, noobj_scale, class_scale]))
-
+        """
         # only object_proids will be adjusted
         nd_class_probs = tf.reshape(class_probs, shape=[-1, SS, C])
         nd_class_proids = tf.reshape(class_proids, shape=[-1, SS, C])
         nd_object_proids = tf.reshape(object_proids, shape=[-1, SS, B])
         nd_coords = tf.reshape(coords, shape=[-1, SS, B, 4])
+        """
 
         """
         The following code calculate weight vector of three parts: class, coordinate, confidence,
@@ -61,13 +63,15 @@ class FastYolo(object):
         """
         nd_coords_predict = tf.reshape(net_out[:, SS * (C + B):], shape=[-1, SS, B, 4])
         best_box = find_best_box(nd_coords_predict, nd_coords)
-        print("--- best_box shape")
-        print(best_box.shape)
         nd_confids = best_box * nd_object_proids
+        """
         print("--- nd_object_proids.shape")
         print(nd_object_proids.shape)
+        print("--- best_box shape")
+        print(best_box.shape)
         print("--- nd_confids.shape")
         print(nd_confids.shape)
+        """
         nd_confid_weight = noobj_scale * (1.0 - nd_confids) + nd_confids
 
         """
@@ -75,8 +79,10 @@ class FastYolo(object):
         since we only penalizes the bounding box has the highest iou.
         """
         bounding_box_coord = tf.concat(4 * [tf.expand_dims(nd_confids, -1)], 3)
+        """
         print("--- bounding_box_coord")
         print(bounding_box_coord.shape)
+        """
         nd_coord_weight = coord_scale * bounding_box_coord
 
         # reconstruct label with adjusted confs. Q: nd_object_proids or nd_confids in true???

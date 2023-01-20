@@ -12,12 +12,14 @@ PROF_DIR = "prof"
 DATASET = 'VOC2007'
 DATA_DIR = 'data/%s' % DATASET
 
-#ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % DATA_DIR
-ANNOTATION_TRAIN_DIR = 'data/VOC2012/train/Annotations'
+ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % DATA_DIR
+#ANNOTATION_TRAIN_DIR = '%s/tmp/Annotations' % DATA_DIR
+#ANNOTATION_TRAIN_DIR = 'data/VOC2012/train/Annotations'
 ANNOTATION_TEST_DIR = '%s/test/Annotations' % DATA_DIR
 ANNOTATION_TMP_DIR = '%s/tmp/Annotations' % DATA_DIR
-#IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % DATA_DIR
-IMAGE_TRAIN_DIR = 'data/VOC2012/train/JPEGImages'
+IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % DATA_DIR
+#IMAGE_TRAIN_DIR = '%s/tmp/JPEGImages' % DATA_DIR
+#IMAGE_TRAIN_DIR = 'data/VOC2012/train/JPEGImages'
 IMAGE_TEST_DIR = '%s/test/JPEGImages' % DATA_DIR
 IMAGE_TMP_DIR = '%s/tmp/JPEGImages' % DATA_DIR
 
@@ -79,7 +81,7 @@ THRESHOLD = 0.17
 NUM_EPOCH = 90
 #NUM_EPOCH = 5
 
-STEPS_PER_CKPT = 30
+STEPS_PER_CKPT = 10
 #STEPS_PER_CKPT = 1
 
 VALIDATE = False
