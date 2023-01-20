@@ -6,11 +6,13 @@ os.environ['CUDA_VISIBLE_DEVICES'] = "0"    # To use GPU, you must set the right
 """
 
 import numpy as np
+from numpy.random import permutation as perm
 
 import config
 from fast_yolo import FastYolo
 from utils.voc_parser import parse
-from data import shuffle
+#from data import shuffle
+from data import get_batch_num, batch
 from utils.misc import current_time, get_optimizer, save_model
 
 """
@@ -63,11 +65,11 @@ def train():
         optimizer = get_optimizer()
         train_op = optimizer.minimize(loss_op)
 
-        # create saver
-        #saver = tf.train.Saver(max_to_keep=1)
-
     with tf.Session(graph=g, config=cfg) as sess:
         tf.global_variables_initializer().run()
+
+        # create saver
+        saver = tf.train.Saver(tf.global_variables(), max_to_keep=1)
 
         """
         # parameters for profiling
@@ -78,15 +80,36 @@ def train():
         for i in range(config.NUM_EPOCH):
             print(current_time(), "epoch: %d" % (i + 1))
 
+            """
             # test using tmp directory
-            batches = shuffle(config.IMAGE_TRAIN_DIR, data)
+            with tf.device("/cpu:0"):
+                batches = shuffle(config.IMAGE_TRAIN_DIR, data)
 
-            for step, (images, bounding_box_dict) in enumerate(batches):
+            for j, (images, bounding_box_dict) in enumerate(batches):
+            """
+
+            shuffle_idx = perm(len(data))
+
+            batch_size = config.BATCH_SIZE
+            batch_num = get_batch_num(data, batch_size)
+            print("batch_num: %d" % batch_num)
+            for b in range(batch_num):
+                step = b + 1
+
+                # get data
+                print(current_time(), "batch %d get data starts ..." % step)
+                chunks = [data[i] for i in shuffle_idx[b * batch_size: (b + 1) * batch_size]]
+                images, bounding_box_dict = batch(config.IMAGE_TRAIN_DIR, chunks)
+                if images is None:
+                    print(current_time(), "batch %d skipped!" % step)
+                    continue
+
                 # convert input in NHWC to NCHW on gpu
                 if config.DEVICE_TYPE == "gpu":
                     images = np.transpose(images, [0, 3, 1, 2])
 
-                # train a batch
+                # train data
+                print(current_time(), "batch %d train data starts ..." % step)
                 feed_dict = dict()
                 feed_dict[image_ph] = images
                 for key in bounding_box_ph_dict:
@@ -96,7 +119,6 @@ def train():
                 _, train_loss = sess.run([train_op, loss_op], feed_dict=feed_dict)
 
                 # print train loss message
-                step += 1
                 if step % config.STEPS_PER_CKPT == 0:
                     print(current_time(), "step %d, train_loss: %.3f" % (step, train_loss))
                     # saver.save(sess, config.CKPT_PATH, global_step=step)
@@ -109,6 +131,8 @@ def train():
                     with open("%s/timeline_%d.json" % (config.PROF_DIR, step), 'w') as f:
                         f.write(chrome_trace)
                     """
+
+            saver.save(sess, config.CKPT_PATH, global_step=step)
 
             # save model each epoch
             outputs = ["net_out", "loss"]
