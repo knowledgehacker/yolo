@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-"""
+
 import os
+"""
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 os.environ['CUDA_VISIBLE_DEVICES'] = "0"    # To use GPU, you must set the right slot
 """
@@ -9,8 +10,8 @@ import numpy as np
 from numpy.random import permutation as perm
 
 import config
-from fast_yolo import FastYolo
 from utils.voc_parser import parse
+from fast_yolo import FastYolo
 #from data import shuffle
 from data import get_batch_num, batch
 from utils.misc import current_time, get_optimizer, save_model
@@ -35,7 +36,6 @@ def train():
 
     with tf.device("/cpu:0"):
         print(current_time(), "Parse starts ...")
-        # test using tmp directory
         data = parse(config.ANNOTATION_TRAIN_DIR, config.CLASSES)
         print(current_time(), "Parse finished!")
 
@@ -66,22 +66,30 @@ def train():
         train_op = optimizer.minimize(loss_op)
 
     with tf.Session(graph=g, config=cfg) as sess:
-        tf.global_variables_initializer().run()
-
-        # create saver
-        saver = tf.train.Saver(tf.global_variables(), max_to_keep=1)
-
         """
         # parameters for profiling
         run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
         run_metadata = tf.RunMetadata()
         """
 
-        for i in range(config.NUM_EPOCH):
-            print(current_time(), "epoch: %d" % (i + 1))
+        tf.global_variables_initializer().run()
+
+        # create saver
+        saver = tf.train.Saver(tf.global_variables(), max_to_keep=1)
+
+        ckpt_path = '%s/%s' % (config.CKPT_DIR, config.MODEL_NAME)
+        trained_epoch = cal_trained_epoch(config.CKPT_DIR)
+        if trained_epoch != 0:
+            print("resume from last epoch %d ..." % trained_epoch)
+            # restore will re-initialize global variables with the saved ones
+            saver.restore(sess, "%s-%d" % (ckpt_path, trained_epoch))
+
+        for i in range(trained_epoch, config.NUM_EPOCH):
+            epoch = i + 1
+
+            print(current_time(), "epoch: %d" % epoch)
 
             """
-            # test using tmp directory
             with tf.device("/cpu:0"):
                 batches = shuffle(config.IMAGE_TRAIN_DIR, data)
 
@@ -98,7 +106,7 @@ def train():
 
                 # get data
                 print(current_time(), "batch %d get data starts ..." % step)
-                chunks = [data[i] for i in shuffle_idx[b * batch_size: (b + 1) * batch_size]]
+                chunks = [data[idx] for idx in shuffle_idx[b * batch_size: (b + 1) * batch_size]]
                 images, bounding_box_dict = batch(config.IMAGE_TRAIN_DIR, chunks)
                 if images is None:
                     print(current_time(), "batch %d skipped!" % step)
@@ -132,13 +140,28 @@ def train():
                         f.write(chrome_trace)
                     """
 
-            saver.save(sess, config.CKPT_PATH, global_step=step)
+            # checkpoint upon each epoch instead of some step during an epoch, for convenient restore
+            saver.save(sess, ckpt_path, global_step=epoch)
 
             # save model each epoch
             outputs = ["net_out", "loss"]
             save_model(sess, config.MODLE_DIR, config.MODEL_NAME, outputs)
 
     print(current_time(), "Training finished!")
+
+
+def cal_trained_epoch(ckpt_dir):
+    trained_epoch = 0
+    ckpt_file = os.path.join(ckpt_dir, "checkpoint")
+    if os.path.exists(ckpt_file):
+        print("load from checkpoint %s" % ckpt_file)
+        with open(ckpt_file, 'r') as f:
+            last = f.readlines()[-1].strip()
+            load_point = last.split(' ')[1]
+            load_point = load_point.split('"')[1]
+            trained_epoch = int(load_point.split('-')[-1])
+
+    return trained_epoch
 
 
 if __name__ == "__main__":

@@ -5,7 +5,6 @@ DEVICE_TYPE = "gpu"
 MODLE_DIR = "models"
 
 CKPT_DIR = 'ckpt'
-CKPT_PATH = '%s/%s' % (CKPT_DIR, MODEL_NAME)
 
 PROF_DIR = "prof"
 
@@ -22,13 +21,6 @@ IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % DATA_DIR
 #IMAGE_TRAIN_DIR = 'data/VOC2012/train/JPEGImages'
 IMAGE_TEST_DIR = '%s/test/JPEGImages' % DATA_DIR
 IMAGE_TMP_DIR = '%s/tmp/JPEGImages' % DATA_DIR
-
-#TF_IMAGE_TRAIN_FILE = '%s/tf/train/objects.tfrecords' % DATA_DIR
-TF_IMAGE_TRAIN_FILE = 'data/VOC2012/tf/train/objects.tfrecords'
-TF_IMAGE_TEST_FILE = '%s/tf/test/objects.tfrecords' % DATA_DIR
-TF_IMAGE_TMP_FILE = '%s/tf/tmp/objects.tfrecords' % DATA_DIR
-
-IMAGE_INDEX_FILE = "%s/image_indexes" % DATA_DIR
 
 IMAGE_OUT_DIR = "%s/out" % DATA_DIR
 
@@ -69,7 +61,6 @@ CLASSES = ["aeroplane", "bicycle", "bird", "boat", "bottle",
 
 # grid num: S x S
 S = 7
-#S = 2
 # Bounding box each grid
 B = 2
 # class num
@@ -81,25 +72,30 @@ THRESHOLD = 0.17
 NUM_EPOCH = 90
 #NUM_EPOCH = 5
 
-STEPS_PER_CKPT = 10
-#STEPS_PER_CKPT = 1
+#STEPS_PER_CKPT = 10
+STEPS_PER_CKPT = 1
 
 VALIDATE = False
 
+# tfrecord, starts
+#TF_IMAGE_TRAIN_FILE = '%s/tf/train/objects.tfrecords' % DATA_DIR
+TF_IMAGE_TRAIN_FILE = 'data/VOC2012/tf/train/objects.tfrecords'
+TF_IMAGE_TEST_FILE = '%s/tf/test/objects.tfrecords' % DATA_DIR
+TF_IMAGE_TMP_FILE = '%s/tf/tmp/objects.tfrecords' % DATA_DIR
+
+IMAGE_INDEX_FILE = "%s/image_indexes" % DATA_DIR
+
 # shuffle size affects convergence greatly, it should be big enough
 SHUFFLE_SIZE = 500
+# tfrecord, ends
 
 # large batch, ex 200, does not work, I don't know why
-BATCH_SIZE = 64
+BATCH_SIZE = 16
 TEST_BATCH_SIZE = 300
-"""
-BATCH_SIZE = 2
-TEST_BATCH_SIZE = 2
-"""
 
 OPTIMIZER = 'rmsprop'
 # !!!Important, for tiny model, use lr 1e-4, for large model, use lr 1e-3
-LR = 1e-4
+LR = 1e-5
 MOMENTUM = 0.9
 DECAY = 5e-4
 
