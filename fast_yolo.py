@@ -35,13 +35,6 @@ class FastYolo(object):
         noobj_scale = config.noobject_scale
         class_scale = config.class_scale
         print('scales  = {}'.format([coord_scale, noobj_scale, class_scale]))
-        """
-        # only object_proids will be adjusted
-        nd_class_probs = tf.reshape(class_probs, shape=[-1, SS, C])
-        nd_class_proids = tf.reshape(class_proids, shape=[-1, SS, C])
-        nd_object_proids = tf.reshape(object_proids, shape=[-1, SS, B])
-        nd_coords = tf.reshape(coords, shape=[-1, SS, B, 4])
-        """
 
         """
         The following code calculate weight vector of three parts: class, coordinate, confidence,
@@ -58,20 +51,22 @@ class FastYolo(object):
         """
         confidence weight, nd_confids get the bounding box that has the highest iou.
 
-        TODO: adjust object_proids during train on the fly??? yes, mask the boxes except the highest iou one with 0.0.
+        TODO: adjust nd_object_proids during train on the fly??? yes, mask the boxes except the highest iou one with 0.0.
         as to B=2 bounding boxes, the last dimension of best_box looks like [0.0, 1.0] or [1.0, 0.0].
+
+        If (box) confidence score reflects how likely the box contains an object(objectness) and how accurate is the bounding box,
+        that is, P((box) confidence) = P(object) * IOU, shouldn't we multiply the confidence part of net_out with IOU? No, in loss,
+        the confidence part refers to objectness (P(object)), the class part refers to class probability (P(class | object)).
+        Similarly, (class) confidence score is defined as P((class) confidence) = P(class) * IOU.
+        I think, both (box) and (class) confidence scores serve as easy illustration purpose in the article, we can safely ignore them.
+
+        When prediction, by multiply P(class | object) * P(object), we get class probability (P(class)),
+        filter out predictions P(class) < config.THRESHOLD, then get the final bounding box for each remaining predictions in NMS by IOU.
         """
         nd_coords_predict = tf.reshape(net_out[:, SS * (C + B):], shape=[-1, SS, B, 4])
         best_box = find_best_box(nd_coords_predict, nd_coords)
         nd_confids = best_box * nd_object_proids
-        """
-        print("--- nd_object_proids.shape")
-        print(nd_object_proids.shape)
-        print("--- best_box shape")
-        print(best_box.shape)
-        print("--- nd_confids.shape")
-        print(nd_confids.shape)
-        """
+
         nd_confid_weight = noobj_scale * (1.0 - nd_confids) + nd_confids
 
         """
@@ -79,10 +74,6 @@ class FastYolo(object):
         since we only penalizes the bounding box has the highest iou.
         """
         bounding_box_coord = tf.concat(4 * [tf.expand_dims(nd_confids, -1)], 3)
-        """
-        print("--- bounding_box_coord")
-        print(bounding_box_coord.shape)
-        """
         nd_coord_weight = coord_scale * bounding_box_coord
 
         # reconstruct label with adjusted confs. Q: nd_object_proids or nd_confids in true???

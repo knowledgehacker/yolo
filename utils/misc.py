@@ -32,22 +32,6 @@ def load_files(input):
     return files
 
 
-def load_image_indexes(index_file):
-    image_index2names = []
-
-    fin = open(index_file, 'r')
-    for line in fin:
-        #print("--- line")
-        #print(line)
-        line = line.strip()
-        idx_str, name = line.split('\t')
-        idx = int(idx_str)
-        image_index2names.append((idx, name))
-    fin.close()
-
-    return image_index2names
-
-
 def with_prefix(prefix, op):
     return "%s/%s" % (prefix, op)
     #return op
@@ -83,12 +67,14 @@ def save_model(sess, model_dir, model_name, outputs):
 
 
 def get_optimizer():
-    if config.OPTIMIZER == 'rmsprop':
+    if config.OPTIMIZER == 'momentum':
+        optimizer = tf.train.MomentumOptimizer(learning_rate=config.LR, momentum=config.MOMENTUM)
+    elif config.OPTIMIZER == 'adagrad':
+        optimizer = tf.train.AdagradOptimizer(learning_rate=config.LR, initial_accumulator_value=1e-8)
+    elif config.OPTIMIZER == 'rmsprop':
         optimizer = tf.train.RMSPropOptimizer(learning_rate=config.LR, decay=config.DECAY, momentum=config.MOMENTUM)
     elif config.OPTIMIZER == 'adam':
         optimizer = tf.train.AdamOptimizer(learning_rate=config.LR)
-    elif config.OPTIMIZER == 'adagrad':
-        optimizer = tf.train.AdagradOptimizer(learning_rate=config.LR, initial_accumulator_value=1e-8)
     else:
         print("Unsupported optimizer: %s" % config.OPTIMIZER)
 

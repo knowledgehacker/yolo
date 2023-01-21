@@ -60,7 +60,7 @@ def postprocess(image_file, net_out, save=True):
 			resultsForJSON.append({"label": mess, "confidence": float('%.2f' % confidence), "topleft": {"x": left, "y": top}, "bottomright": {"x": right, "y": bot}})
 			continue
 
-		color = (127, 127, 127)
+		color = (248, 0, 124)
 		cv2.rectangle(image,
 			(left, top), (right, bot),
 			color, thick)

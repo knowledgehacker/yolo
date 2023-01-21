@@ -28,18 +28,13 @@ def resize_input(im):
     return imsz
 
 
-def preprocess(im, allobj=None):
-    """
-    Takes an image, return it as a numpy tensor that is readily to be fed into tfnet.
-    If there is an accompanied annotation (allobj),
-    meaning this preprocessing is serving the train process, then this
-    image will be transformed with random noise to augment training data,
-    using scale, translation, flipping and recolor. The accompanied
-    parsed annotation (allobj) will also be modified accordingly.
-    """
-    if type(im) is not np.ndarray:
-        im = cv2.imread(im)
-
+"""
+Takes an image, return it as a numpy tensor that is readily to be fed into tfnet.
+The image will be transformed with random noise to augment training data,
+using scale, translation, flipping and recolor. The accompanied
+parsed annotation (allobj) will also be modified accordingly.
+"""
+def data_augment(im, allobj=None):
     if allobj is not None: # in training mode
         result = imcv2_affine_trans(im)
         im, dims, trans_param = result
@@ -52,20 +47,16 @@ def preprocess(im, allobj=None):
             obj[1] = dims[0] - obj[3]
             obj[3] = dims[0] - obj_1_
         # TODO: distort with linear instead of exponential
-        #im = imcv2_recolor(im)
+        im = imcv2_recolor(im)
 
-    im = resize_input(im)
-    if allobj is None:
-        return im
-
-    return im#, np.array(im) # for unit testing
+    return im
 
 
 S, B = config.S, config.B
 C, labels = config.C, config.CLASSES
 
 
-def batch(image_dir, chunks):
+def batch(image_dir, chunks, test=False):
 # def _batch(image_dir, chunks):
     image_batch = []
 
@@ -84,7 +75,10 @@ def batch(image_dir, chunks):
             print("Warning - image %s doesn't exists." % path)
             return None, None
 
-        img = preprocess(path, allobj)
+        img = cv2.imread(path)
+        if not test:
+            img = data_augment(img, allobj)
+        img = resize_input(img)
 
         # Calculate regression target, normalize the items in the loss formula
         grid_w = 1. * w / S

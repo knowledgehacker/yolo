@@ -11,16 +11,17 @@ PROF_DIR = "prof"
 DATASET = 'VOC2007'
 DATA_DIR = 'data/%s' % DATASET
 
-ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % DATA_DIR
+#ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % DATA_DIR
 #ANNOTATION_TRAIN_DIR = '%s/tmp/Annotations' % DATA_DIR
-#ANNOTATION_TRAIN_DIR = 'data/VOC2012/train/Annotations'
-ANNOTATION_TEST_DIR = '%s/test/Annotations' % DATA_DIR
-ANNOTATION_TMP_DIR = '%s/tmp/Annotations' % DATA_DIR
-IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % DATA_DIR
+ANNOTATION_TRAIN_DIR = 'data/VOC2012/train/Annotations'
+#ANNOTATION_TEST_DIR = '%s/test/Annotations' % DATA_DIR
+ANNOTATION_TEST_DIR = '%s/tmp/Annotations' % DATA_DIR
+
+#IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % DATA_DIR
 #IMAGE_TRAIN_DIR = '%s/tmp/JPEGImages' % DATA_DIR
-#IMAGE_TRAIN_DIR = 'data/VOC2012/train/JPEGImages'
-IMAGE_TEST_DIR = '%s/test/JPEGImages' % DATA_DIR
-IMAGE_TMP_DIR = '%s/tmp/JPEGImages' % DATA_DIR
+IMAGE_TRAIN_DIR = 'data/VOC2012/train/JPEGImages'
+#IMAGE_TEST_DIR = '%s/test/JPEGImages' % DATA_DIR
+IMAGE_TEST_DIR = '%s/tmp/JPEGImages' % DATA_DIR
 
 IMAGE_OUT_DIR = "%s/out" % DATA_DIR
 
@@ -66,7 +67,8 @@ B = 2
 # class num
 C = len(CLASSES)
 
-THRESHOLD = 0.17
+# P(object) * P(class|object), hope P(class|object) > THRESHOLD, P(object) ~ 1.0
+THRESHOLD = 0.3
 #THRESHOLD = 0.0
 
 NUM_EPOCH = 90
@@ -77,21 +79,10 @@ STEPS_PER_CKPT = 1
 
 VALIDATE = False
 
-# tfrecord, starts
-#TF_IMAGE_TRAIN_FILE = '%s/tf/train/objects.tfrecords' % DATA_DIR
-TF_IMAGE_TRAIN_FILE = 'data/VOC2012/tf/train/objects.tfrecords'
-TF_IMAGE_TEST_FILE = '%s/tf/test/objects.tfrecords' % DATA_DIR
-TF_IMAGE_TMP_FILE = '%s/tf/tmp/objects.tfrecords' % DATA_DIR
-
-IMAGE_INDEX_FILE = "%s/image_indexes" % DATA_DIR
-
-# shuffle size affects convergence greatly, it should be big enough
-SHUFFLE_SIZE = 500
-# tfrecord, ends
-
 # large batch, ex 200, does not work, I don't know why
 BATCH_SIZE = 16
-TEST_BATCH_SIZE = 300
+TEST_BATCH_SIZE = 1
+#TEST_BATCH_SIZE = 300
 
 OPTIMIZER = 'rmsprop'
 # !!!Important, for tiny model, use lr 1e-4, for large model, use lr 1e-3
