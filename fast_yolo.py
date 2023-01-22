@@ -20,13 +20,6 @@ class FastYolo(object):
 
         return net_out
 
-    """
-    TODO: Learning rate Tuning
-    Throughout training we use a batch size of 64, a momentum of 0.9 and a decay of 0.0005.
-    Our learning rate schedule is as follows: For the first epochs we slowly raise the learning rate from 10^-3 to 10^-2.
-    If we start at a high learning rate our model often diverges due to unstable gradients.
-    We continue training with 10^-2 for 75 epochs, then 10^-3 for 30 epochs, and finally 10^-4 for 30 epochs.
-    """
     #def opt(self, net_out, class_probs, class_proids, object_proids, coords):
     def opt(self, net_out, nd_class_probs, nd_class_proids, nd_object_proids, nd_coords):
         # parameters
