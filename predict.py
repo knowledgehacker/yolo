@@ -7,7 +7,10 @@ import json
 import cv2
 
 import config
-from cython_utils.cy_yolo_findboxes import yolo_box_constructor
+# v1
+#from cython_utils.cy_yolo_findboxes import yolo_box_constructor
+# v2
+from ...cython_utils.cy_yolo2_findboxes import box_constructor
 
 
 def process_box(b, h, w, threshold):
@@ -28,6 +31,8 @@ def process_box(b, h, w, threshold):
 	return None
 
 
+# v1
+"""
 def findboxes(net_out, w, h):
 	meta = {
 		"classes": config.C,
@@ -36,6 +41,22 @@ def findboxes(net_out, w, h):
 	}
 	threshold = config.THRESHOLD
 	boxes = yolo_box_constructor(meta, net_out, w, h, threshold)
+
+	return boxes
+"""
+
+
+# v2
+def findboxes(net_out):
+	meta = {
+		"anchors": config.anchors,
+
+		"classes": config.C,
+		"num": config.B,
+		"out_size": (config.H, config.W, config.B * (config.C + 1 + 4))
+	}
+	threshold = config.THRESHOLD
+	boxes = box_constructor(meta, net_out, threshold)
 
 	return boxes
 
@@ -47,7 +68,10 @@ def postprocess(image_file, net_out, save=True):
 	image = cv2.imread(image_file)
 	h, w, _ = image.shape
 
-	boxes = findboxes(net_out, w, h)
+	# v1
+	#boxes = findboxes(net_out, w, h)
+	# v2
+	boxes = findboxes(net_out)
 
 	resultsForJSON = []
 	for b in boxes:

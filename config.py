@@ -1,6 +1,6 @@
 MODEL_NAME = 'fast_yolo'
 
-DEVICE_TYPE = "gpu"
+DEVICE_TYPE = "cpu"
 
 MODLE_DIR = "models"
 
@@ -9,17 +9,21 @@ CKPT_DIR = 'ckpt'
 PROF_DIR = "prof"
 
 DATASET = 'VOC2007'
-DATA_DIR = 'data/%s' % DATASET
+
+#DATA_DIR = 'data/%s' % DATASET
+V1_DIR = "../yolo_v1"
+DATA_DIR = '%s/data/%s' % (V1_DIR, DATASET)
+
 
 #ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % DATA_DIR
-#ANNOTATION_TRAIN_DIR = '%s/tmp/Annotations' % DATA_DIR
-ANNOTATION_TRAIN_DIR = 'data/VOC2012/train/Annotations'
+ANNOTATION_TRAIN_DIR = '%s/tmp/Annotations' % DATA_DIR
+#ANNOTATION_TRAIN_DIR = 'data/VOC2012/train/Annotations'
 #ANNOTATION_TEST_DIR = '%s/test/Annotations' % DATA_DIR
 ANNOTATION_TEST_DIR = '%s/tmp/Annotations' % DATA_DIR
 
 #IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % DATA_DIR
-#IMAGE_TRAIN_DIR = '%s/tmp/JPEGImages' % DATA_DIR
-IMAGE_TRAIN_DIR = 'data/VOC2012/train/JPEGImages'
+IMAGE_TRAIN_DIR = '%s/tmp/JPEGImages' % DATA_DIR
+#IMAGE_TRAIN_DIR = 'data/VOC2012/train/JPEGImages'
 #IMAGE_TEST_DIR = '%s/test/JPEGImages' % DATA_DIR
 IMAGE_TEST_DIR = '%s/tmp/JPEGImages' % DATA_DIR
 
@@ -34,8 +38,14 @@ class_scale = 1.0
 coord_scale = 5.0
 
 # image
-IMG_H = 448
-IMG_W = 448
+# v1
+#IMG_H = 448
+#IMG_W = 448
+
+# v2
+IMG_H = 416
+IMG_W = 416
+
 IMG_CH = 3
 
 if DEVICE_TYPE == "gpu":
@@ -60,10 +70,14 @@ CLASSES = ["aeroplane", "bicycle", "bird", "boat", "bottle",
     "train", "tvmonitor"]
 #   18          19
 
-# grid num: S x S
-S = 7
-# Bounding box each grid
-B = 2
+# box priors, (w, h), based on not coordinates but grid
+anchors = [1.32,1.73, 3.19,4.01, 5.05,8.10, 9.47,4.84, 11.23,10.01]
+
+# feature map H x W
+H = 13
+W = 13
+# Bounding box each feature map location
+B = 5
 # class num
 C = len(CLASSES)
 

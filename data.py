@@ -52,7 +52,9 @@ def data_augment(im, allobj=None):
     return im
 
 
-S, B = config.S, config.B
+# TODO: check out what's H and W
+H, W = config.H, config.W
+B = config.B
 C, labels = config.C, config.CLASSES
 
 
@@ -81,8 +83,8 @@ def batch(image_dir, chunks, test=False):
         img = resize_input(img)
 
         # Calculate regression target, normalize the items in the loss formula
-        grid_w = 1. * w / S
-        grid_h = 1. * h / S
+        grid_w = 1. * w / W
+        grid_h = 1. * h / H
 
         for obj in allobj:
             # centrex = 1/2 * (xmin + xmax), centrey = 1/2 * (ymin + ymax)
@@ -90,7 +92,7 @@ def batch(image_dir, chunks, test=False):
             centery = .5 * (obj[2] + obj[4]) #ymin, ymax
             cx = centerx / grid_w
             cy = centery / grid_h
-            if cx >= S or cy >= S:
+            if cx >= W or cy >= H:
                 print("Warning - image %s has bad coordinate!" % path)
                 return None, None
 
@@ -100,21 +102,32 @@ def batch(image_dir, chunks, test=False):
             obj[4] = np.sqrt(obj[4])
             obj[1] = cx - np.floor(cx)  # centerx
             obj[2] = cy - np.floor(cy)  # centery
-            obj += [int(np.floor(cy) * S + np.floor(cx))]
+            obj += [int(np.floor(cy) * W + np.floor(cx))]
 
         # show(im, allobj, S, w, h, cellx, celly) # unit test
 
         # Calculate placeholders' values
-        probs = np.zeros([S*S, C])
-        confs = np.zeros([S*S, B])
-        coord = np.zeros([S*S, B, 4])
-        proid = np.zeros([S*S, C])
+        # v1
+        #probs = np.zeros([H*W, C])
+        #proid = np.zeros([H*W, C])
+        # v2
+        probs = np.zeros([H*W, B, C])
+        proid = np.zeros([H*W, B, C])
+        confs = np.zeros([H*W, B])
+        coord = np.zeros([H*W, B, 4])
         for obj in allobj:
-            probs[obj[5], :] = [0.] * C
-            probs[obj[5], labels.index(obj[0])] = 1.
-            proid[obj[5], :] = [1] * C
-            coord[obj[5], :, :] = [obj[1:5]] * B
+            # v1
+            #probs[obj[5], :] = [0.] * C
+            #probs[obj[5], labels.index(obj[0])] = 1.
+            # v2
+            probs[obj[5], :, :] = [[0.] * C] * B
+            probs[obj[5], :, labels.index(obj[0])] = 1.
+            # v1
+            #proid[obj[5], :] = [1] * C
+            # v2
+            proid[obj[5], :, :] = [[1] * C] * B
             confs[obj[5], :] = [1.] * B
+            coord[obj[5], :, :] = [obj[1:5]] * B
 
         image_batch.append(img)
 

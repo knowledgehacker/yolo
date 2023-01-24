@@ -1,54 +1,100 @@
+# -*- coding: utf-8 -*-
+
 import config
 
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()
 
-from keras import Sequential
-from keras.layers.convolutional import Convolution2D, MaxPooling2D
-from keras.layers import BatchNormalization, LeakyReLU
-from keras.layers.core import Flatten, Dense, Dropout
+from keras.models import Model
+from keras.layers import Input, Conv2D, MaxPooling2D, BatchNormalization, LeakyReLU
+
+H, W = config.H, config.W
+C, B = config.C, config.B
 
 
-SS, C, B = config.S * config.S, config.C, config.B
+# the function to implement the orgnization layer (thanks to github.com/allanzelener/YAD2K)
+def space_to_depth_x2(x, data_format):
+    df = "NHWC"
+    if data_format == "channels_first":
+        df = "NCHW"
+
+    return tf.space_to_depth(x, block_size=2, data_format=df)
+
+
+def ConvBatchLReLu(x, filter, size, stride, padding_mode, data_format, index, trainable):
+    x = Conv2D(filter, kernel_size=(size, size), strides=(stride, stride),
+               padding=padding_mode, data_format=data_format, name='conv_{}'.format(index),
+               use_bias=False, trainable=trainable)(x)
+    x = BatchNormalization(name='norm_{}'.format(index), trainable=trainable)(x)
+    x = LeakyReLU(alpha=0.1)(x)
+
+    #return (x)
+    return x
+
+
+def ConvBatchLReLu_loop(x, convs, padding_mode, data_format, index, trainable):
+    for (filter, size, stride) in convs:
+        x = ConvBatchLReLu(x, filter, size, stride, padding_mode, data_format, index, trainable)
+        index += 1
+
+    #return (x)
+    return x
 
 
 class BaseNetwork(object):
-    """
     def __init__(self):
         print("FastYolo")
-    """
 
-    def forward(self, image_batch, data_format, input_shape, dropout_keep_prob):
-        # 9 conv layers + 3 fc layers
+    def forward(self, image_batch, data_format, input_shape, dropout_keep_prob, trainable=True):
         padding_mode = 'same'
 
-        model = Sequential()
-        model.add(Convolution2D(16, kernel_size=(3, 3), input_shape=input_shape, padding=padding_mode, data_format=data_format))
-        model.add(BatchNormalization())
-        model.add(LeakyReLU(alpha=0.1))
-        model.add(MaxPooling2D(pool_size=(2, 2), data_format=data_format))
+        input_image = Input(shape=input_shape, name="input_image")
+        # Layer 1
+        x = ConvBatchLReLu(input_image, 32, 3, 1, padding_mode, data_format, 1, trainable)
+        x = MaxPooling2D(pool_size=(2, 2), name="maxpool1_416to208")(x)
 
-        for i in range(5):
-            model.add(Convolution2D(2 ** (5 + i), kernel_size=(3, 3), padding=padding_mode, data_format=data_format))
-            model.add(BatchNormalization())
-            model.add(LeakyReLU(alpha=0.1))
-            model.add(MaxPooling2D(pool_size=(2, 2), data_format=data_format))
+        # Layer 2
+        x = ConvBatchLReLu(x, 64, 3, 1, padding_mode, data_format, 2, trainable)
+        x = MaxPooling2D(pool_size=(2, 2), name="maxpool1_208to104")(x)
 
-        for i in range(3):
-            model.add(Convolution2D(1024, kernel_size=(3, 3), padding=padding_mode, data_format=data_format))
-            model.add(BatchNormalization())
-            model.add(LeakyReLU(alpha=0.1))
+        # Layer 3 - 5
+        convs = [(128, 3, 1), (64, 1, 1), (128, 3, 1)]
+        x = ConvBatchLReLu_loop(x, convs, padding_mode, data_format, 3, trainable)
+        x = MaxPooling2D(pool_size=(2, 2), name="maxpool1_104to52")(x)
 
-        model.add(Flatten())
-        model.add(Dense(256))
-        model.add(Dense(4096))
-        model.add(LeakyReLU(alpha=0.1))
+        # Layer 6 - 8
+        convs = [(256, 3, 1), (128, 1, 1), (256, 3, 1)]
+        x = ConvBatchLReLu_loop(x, convs, padding_mode, data_format, 6, trainable)
+        x = MaxPooling2D(pool_size=(2, 2), name="maxpool1_52to26")(x)
 
-        #model.add(Dropout(rate=1 - dropout_keep_prob))
+        # Layer 9 - 13
+        convs = [(512, 3, 1), (256, 1, 1), (512, 3, 1), (256, 1, 1), (512, 3, 1)]
+        x = ConvBatchLReLu_loop(x, convs, padding_mode, data_format, 9, trainable)
 
-        model.add(Dense(SS * (C + B * 5)))
+        skip_connection = x
+        x = MaxPooling2D(pool_size=(2, 2), name="maxpool1_26to13")(x)
 
-        # model.summary()
+        # Layer 14 - 20
+        convs = [(1024, 3, 1), (512, 1, 1), (1024, 3, 1), (512, 1, 1), (1024, 3, 1), (1024, 3, 1), (1024, 3, 1)]
+        x = ConvBatchLReLu_loop(x, convs, padding_mode, data_format, 14, trainable)
+
+        # TODO: work???
+        # Layer 21
+        skip_connection = ConvBatchLReLu(skip_connection, 64, 1, 1, padding_mode, data_format, 21, trainable)
+        skip_connection = space_to_depth_x2(skip_connection, data_format)
+
+        # TODO: work???
+        x = tf.concat([skip_connection, x], axis=-1)
+        print("---")
+        print(tf.shape(x))
+
+        # Layer 22
+        x = ConvBatchLReLu(x, 1024, 3, 1, padding_mode, data_format, 22, trainable)
+
+        # Layer 23
+        x = Conv2D(filters=B * (C + 1 + 4), kernel_size=(1, 1), strides=(1, 1), padding=padding_mode, name='conv_23')(x)
+
+        model = Model(input_image, x)
 
         net_out = tf.identity(model.call(image_batch), name="net_out")
 

@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+
+import numpy as np
+
 import config
 from base_network import BaseNetwork
 from utils.iou import find_best_box
@@ -6,8 +9,8 @@ from utils.iou import find_best_box
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()
 
-
-SS, C, B = config.S * config.S, config.C, config.B
+H, W = config.H, config.W
+C, B = config.C, config.B
 
 
 class FastYolo(object):
@@ -35,44 +38,48 @@ class FastYolo(object):
         take care of the weight terms, construct indicator matrix(which grids the objects in, which ones not in).
         """
 
-        """
-        class weight, class is in grid unit instead of bounding box unit,
-        so we don't need to multiply nd_confids here.
-        """
-        nd_class_weight = class_scale * nd_class_proids
+        nd_net_out = tf.reshape(net_out, [-1, H, W, B, (C + 1 + 4)])
+
+        nd_coords_predict = nd_net_out[:, :, :, :, C + 1:C + 5]
+        nd_coords_predict = tf.reshape(nd_coords_predict, [-1, H * W, B, 4])
+        adjusted_coords_xy = tf.sigmoid(nd_coords_predict[:, :, :, 0:2])
+        adjusted_coords_wh = tf.sqrt(
+            tf.exp(nd_coords_predict[:, :, :, 2:4]) * np.reshape(config.anchors, [1, 1, B, 2]) / np.reshape([W, H], [1, 1, 1, 2]))
+        nd_coords_predict = tf.concat([adjusted_coords_xy, adjusted_coords_wh], 3)
+
+        adjusted_c = tf.sigmoid(nd_net_out[:, :, :, :, C])
+        adjusted_c = tf.reshape(adjusted_c, [-1, H * W, B, 1])
+
+        adjusted_prob = tf.nn.softmax(nd_net_out[:, :, :, :, :C])
+        adjusted_prob = tf.reshape(adjusted_prob, [-1, H * W, B, C])
+
+        adjusted_net_out = tf.concat([adjusted_coords_xy, adjusted_coords_wh, adjusted_c, adjusted_prob], 3)
 
         """
         confidence weight, nd_confids get the bounding box that has the highest iou.
-
-        TODO: adjust nd_object_proids during train on the fly??? yes, mask the boxes except the highest iou one with 0.0.
-        as to B=2 bounding boxes, the last dimension of best_box looks like [0.0, 1.0] or [1.0, 0.0].
-
-        If (box) confidence score reflects how likely the box contains an object(objectness) and how accurate is the bounding box,
-        that is, P((box) confidence) = P(object) * IOU, shouldn't we multiply the confidence part of net_out with IOU? No, in loss,
-        the confidence part refers to objectness (P(object)), the class part refers to class probability (P(class | object)).
-        Similarly, (class) confidence score is defined as P((class) confidence) = P(class) * IOU.
-        I think, both (box) and (class) confidence scores serve as easy illustration purpose in the article, we can safely ignore them.
-
-        When prediction, by multiply P(class | object) * P(object), we get class probability (P(class)),
-        filter out predictions P(class) < config.THRESHOLD, then get the final bounding box for each remaining predictions in NMS by IOU.
         """
-        nd_coords_predict = tf.reshape(net_out[:, SS * (C + B):], shape=[-1, SS, B, 4])
         best_box = find_best_box(nd_coords_predict, nd_coords)
         nd_confids = best_box * nd_object_proids
 
         nd_confid_weight = noobj_scale * (1.0 - nd_confids) + nd_confids
 
         """
-        coordinate weight, we need to multiply nd_confids here,
-        since we only penalizes the bounding box has the highest iou.
+        class weight, multiply nd_confids to only penalizes the bounding box has the highest iou.
+        """
+        bounding_box_class = tf.concat(C * [tf.expand_dims(nd_confids, -1)], 3)
+        nd_class_weight = class_scale * nd_class_proids * bounding_box_class
+
+        """
+        coordinate weight, multiply nd_confids to only penalizes the bounding box has the highest iou.
         """
         bounding_box_coord = tf.concat(4 * [tf.expand_dims(nd_confids, -1)], 3)
         nd_coord_weight = coord_scale * bounding_box_coord
 
         # reconstruct label with adjusted confs. Q: nd_object_proids or nd_confids in true???
-        true = tf.concat([flat(nd_class_probs), flat(nd_confids), flat(nd_coords)], 1)
-        weights = tf.concat([flat(nd_class_weight), flat(nd_confid_weight), flat(nd_coord_weight)], 1)
-        weighted_square_error = weights * ((net_out - true) ** 2)
+        true = tf.concat([nd_class_probs, tf.expand_dims(nd_confids, 3), nd_coords], 3)
+        weights = tf.concat([nd_class_weight, tf.expand_dims(nd_confid_weight, 3), nd_coord_weight], 3)
+        weighted_square_error = weights * ((adjusted_net_out - true) ** 2)
+        weighted_square_error = tf.reshape(weighted_square_error, [-1, H * W * B * (C + 1 + 4)])
         loss_op = 0.5 * tf.reduce_mean(tf.reduce_sum(weighted_square_error, 1), name="loss")
 
         return loss_op
