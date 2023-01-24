@@ -52,7 +52,8 @@ def data_augment(im, allobj=None):
     return im
 
 
-S, B = config.S, config.B
+S = config.S
+B = config.B
 C, labels = config.C, config.CLASSES
 
 

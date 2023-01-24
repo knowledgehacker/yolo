@@ -1,21 +1,22 @@
 # -*- coding: utf-8 -*-
 import config
-from base_network import BaseNetwork
+#from tiny import DarkNet
+from small import DarkNet
 from utils.iou import find_best_box
 
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()
 
 
-SS, C, B = config.S * config.S, config.C, config.B
+SS, B, C = config.S * config.S, config.B, config.C
 
 
 class FastYolo(object):
     def __init__(self):
         #print("FastYolo")
-        self.net = BaseNetwork()
+        self.net = DarkNet()
 
-    def forward(self, image_batch, data_format, input_shape, dropout_keep_prob=tf.constant(0.0, dtype=tf.float32)):
+    def forward(self, image_batch, data_format, input_shape, dropout_keep_prob):
         net_out = self.net.forward(image_batch, data_format, input_shape, dropout_keep_prob)
 
         return net_out

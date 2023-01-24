@@ -85,7 +85,7 @@ TEST_BATCH_SIZE = 1
 #TEST_BATCH_SIZE = 300
 
 OPTIMIZER = 'rmsprop'
-# !!!Important, for tiny model, use lr 1e-4, for large model, use lr 1e-3
+
 LR = 1e-5
 MOMENTUM = 0.9
 DECAY = 5e-4
