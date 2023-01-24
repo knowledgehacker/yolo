@@ -11,7 +11,15 @@ from numpy.random import permutation as perm
 
 import config
 from utils.voc_parser import parse
-from fast_yolo import FastYolo
+if config.VERSION == "v1":
+    print("YOLO v1")
+    from v1.fast_yolo import FastYolo
+elif config.VERSION == "v2":
+    print("YOLO v2")
+    from v2.fast_yolo import FastYolo
+else:
+    print("Unsupported version: %s" % config.VERSION)
+    exit(-1)
 #from data import shuffle
 from data import get_batch_num, batch
 from utils.misc import current_time, get_optimizer, save_model
@@ -29,7 +37,8 @@ cfg.gpu_options.allow_growth = True
 
 
 H, W = config.H, config.W
-B, C = config.B, config.C
+B = config.B
+C = config.C
 
 
 def train():
@@ -51,16 +60,23 @@ def train():
 
         #To be able to feed with batches of different size, the first dimension should be None
         image_ph = tf.placeholder(dtype=tf.float32, shape=config.placeholder_image_shape, name="image_ph")
-        bounding_box_ph_dict = {
-            # v1
-            #"class_probs": tf.placeholder(dtype=tf.float32, shape=(None, H*W, C), name="class_probs_ph"),
-            #"class_proids": tf.placeholder(dtype=tf.float32, shape=(None, H*W, C), name="class_proids_ph"),
-            # v2
-            "class_probs": tf.placeholder(dtype=tf.float32, shape=(None, H*W, B, C), name="class_probs_ph"),
-            "class_proids": tf.placeholder(dtype=tf.float32, shape=(None, H*W, B, C), name="class_proids_ph"),
-            "object_proids": tf.placeholder(dtype=tf.float32, shape=(None, H*W, B), name="object_proids_ph"),
-            "coords": tf.placeholder(dtype=tf.float32, shape=(None, H*W, B, 4), name="coords_ph")
-        }
+        if config.VERSION == "v1":
+            bounding_box_ph_dict = {
+                "class_probs": tf.placeholder(dtype=tf.float32, shape=(None, H*W, C), name="class_probs_ph"),
+                "class_proids": tf.placeholder(dtype=tf.float32, shape=(None, H*W, C), name="class_proids_ph"),
+                "object_proids": tf.placeholder(dtype=tf.float32, shape=(None, H*W, B), name="object_proids_ph"),
+                "coords": tf.placeholder(dtype=tf.float32, shape=(None, H*W, B, 4), name="coords_ph")
+            }
+        elif config.VERSION == "v2":
+            bounding_box_ph_dict = {
+                "class_probs": tf.placeholder(dtype=tf.float32, shape=(None, H*W, B, C), name="class_probs_ph"),
+                "class_proids": tf.placeholder(dtype=tf.float32, shape=(None, H*W, B, C), name="class_proids_ph"),
+                "object_proids": tf.placeholder(dtype=tf.float32, shape=(None, H*W, B), name="object_proids_ph"),
+                "coords": tf.placeholder(dtype=tf.float32, shape=(None, H*W, B, 4), name="coords_ph")
+            }
+        else:
+            print("Unsupported version: %s" % config.VERSION)
+            exit(-1)
         dropout_keep_prob_ph = tf.placeholder(tf.float32, name="dropout_keep_prob")
 
         net_out_op = model.forward(image_ph, config.data_format, config.input_shape, dropout_keep_prob_ph)

@@ -3,6 +3,7 @@
 from numpy.random import permutation as perm
 import cv2
 from copy import deepcopy
+import math
 import numpy as np
 import os
 
@@ -52,7 +53,6 @@ def data_augment(im, allobj=None):
     return im
 
 
-# TODO: check out what's H and W
 H, W = config.H, config.W
 B = config.B
 C, labels = config.C, config.CLASSES
@@ -82,6 +82,19 @@ def batch(image_dir, chunks, test=False):
             img = data_augment(img, allobj)
         img = resize_input(img)
 
+        # Calculate placeholders' values
+        if config.VERSION == "v1":
+            probs = np.zeros([H*W, C])
+            proid = np.zeros([H*W, C])
+        elif config.VERSION == "v2":
+            probs = np.zeros([H*W, B, C])
+            proid = np.zeros([H*W, B, C])
+        else:
+            print("Unsupported version: %s" % config.VERSION)
+            exit(-1)
+        confs = np.zeros([H*W, B])
+        coord = np.zeros([H*W, B, 4])
+
         # Calculate regression target, normalize the items in the loss formula
         grid_w = 1. * w / W
         grid_h = 1. * h / H
@@ -98,36 +111,29 @@ def batch(image_dir, chunks, test=False):
 
             obj[3] = float(obj[3] - obj[1]) / w
             obj[4] = float(obj[4] - obj[2]) / h
-            obj[3] = np.sqrt(obj[3])
-            obj[4] = np.sqrt(obj[4])
-            obj[1] = cx - np.floor(cx)  # centerx
-            obj[2] = cy - np.floor(cy)  # centery
-            obj += [int(np.floor(cy) * W + np.floor(cx))]
+            obj[3] = math.sqrt(obj[3])
+            obj[4] = math.sqrt(obj[4])
+            grid_cx = int(cx)
+            grid_cy = int(cy)
+            obj[1] = cx - grid_cx  # centerx
+            obj[2] = cy - grid_cy  # centery
 
-        # show(im, allobj, S, w, h, cellx, celly) # unit test
+            grid_cell = grid_cy * W + grid_cx
 
-        # Calculate placeholders' values
-        # v1
-        #probs = np.zeros([H*W, C])
-        #proid = np.zeros([H*W, C])
-        # v2
-        probs = np.zeros([H*W, B, C])
-        proid = np.zeros([H*W, B, C])
-        confs = np.zeros([H*W, B])
-        coord = np.zeros([H*W, B, 4])
-        for obj in allobj:
-            # v1
-            #probs[obj[5], :] = [0.] * C
-            #probs[obj[5], labels.index(obj[0])] = 1.
-            # v2
-            probs[obj[5], :, :] = [[0.] * C] * B
-            probs[obj[5], :, labels.index(obj[0])] = 1.
-            # v1
-            #proid[obj[5], :] = [1] * C
-            # v2
-            proid[obj[5], :, :] = [[1] * C] * B
-            confs[obj[5], :] = [1.] * B
-            coord[obj[5], :, :] = [obj[1:5]] * B
+            # Calculate placeholders' values
+            if config.VERSION == "v1":
+                probs[grid_cell, :] = [0.] * C
+                probs[grid_cell, labels.index(obj[0])] = 1.
+                proid[grid_cell, :] = [1.] * C
+            elif config.VERSION == "v2":
+                probs[grid_cell, :, :] = [[0.] * C] * B
+                probs[grid_cell, :, labels.index(obj[0])] = 1.
+                proid[grid_cell, :, :] = [[1.] * C] * B
+            else:
+                print("Unsupported version: %s" % config.VERSION)
+                exit(-1)
+            confs[grid_cell, :] = [1.] * B
+            coord[grid_cell, :, :] = [obj[1:5]] * B
 
         image_batch.append(img)
 
@@ -137,8 +143,6 @@ def batch(image_dir, chunks, test=False):
         coord_batch.append(coord)
 
     inp_feed_val = np.array(image_batch)
-    #print("--- inp_feed_val.shape")
-    #print(inp_feed_val.shape)
     loss_feed_val = {
         'class_probs': np.array(probs_batch),
         'class_proids': np.array(probs_batch),

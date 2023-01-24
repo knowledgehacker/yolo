@@ -7,10 +7,13 @@ import json
 import cv2
 
 import config
-# v1
-#from cython_utils.cy_yolo_findboxes import yolo_box_constructor
-# v2
-from ...cython_utils.cy_yolo2_findboxes import box_constructor
+if config.VERSION == "v1":
+	from cython_utils.cy_yolo_findboxes import yolo_box_constructor
+elif config.VERSION == "v2":
+	from ...cython_utils.cy_yolo2_findboxes import box_constructor
+else:
+	print("Unsupported version: %s" % config.VERSION)
+	exit(-1)
 
 
 def process_box(b, h, w, threshold):
@@ -32,8 +35,7 @@ def process_box(b, h, w, threshold):
 
 
 # v1
-"""
-def findboxes(net_out, w, h):
+def findboxes_v1(net_out, w, h):
 	meta = {
 		"classes": config.C,
 		"num": config.B,
@@ -43,11 +45,10 @@ def findboxes(net_out, w, h):
 	boxes = yolo_box_constructor(meta, net_out, w, h, threshold)
 
 	return boxes
-"""
 
 
 # v2
-def findboxes(net_out):
+def findboxes_v2(net_out):
 	meta = {
 		"anchors": config.anchors,
 
@@ -68,10 +69,13 @@ def postprocess(image_file, net_out, save=True):
 	image = cv2.imread(image_file)
 	h, w, _ = image.shape
 
-	# v1
-	#boxes = findboxes(net_out, w, h)
-	# v2
-	boxes = findboxes(net_out)
+	if config.VERSION == "v1":
+		boxes = findboxes_v1(net_out, w, h)
+	elif config.VERSION == "v2":
+		boxes = findboxes_v2(net_out)
+	else:
+		print("Unsupported version: %s" % config.VERSION)
+		exit(-1)
 
 	resultsForJSON = []
 	for b in boxes:

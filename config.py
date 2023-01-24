@@ -1,10 +1,13 @@
 MODEL_NAME = 'fast_yolo'
 
-DEVICE_TYPE = "cpu"
+#VERSION = "v1"
+VERSION = "v2"
+
+DEVICE_TYPE = "gpu"
 
 MODLE_DIR = "models"
 
-CKPT_DIR = 'ckpt'
+CKPT_DIR = 'ckpt/%s' % VERSION
 
 PROF_DIR = "prof"
 
@@ -15,36 +18,30 @@ V1_DIR = "../yolo_v1"
 DATA_DIR = '%s/data/%s' % (V1_DIR, DATASET)
 
 
-#ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % DATA_DIR
-ANNOTATION_TRAIN_DIR = '%s/tmp/Annotations' % DATA_DIR
-#ANNOTATION_TRAIN_DIR = 'data/VOC2012/train/Annotations'
+ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % DATA_DIR
+#ANNOTATION_TRAIN_DIR = '%s/tmp/Annotations' % DATA_DIR
+#ANNOTATION_TRAIN_DIR = '%s/data/VOC2012/train/Annotations' % V1_DIR
 #ANNOTATION_TEST_DIR = '%s/test/Annotations' % DATA_DIR
 ANNOTATION_TEST_DIR = '%s/tmp/Annotations' % DATA_DIR
 
-#IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % DATA_DIR
-IMAGE_TRAIN_DIR = '%s/tmp/JPEGImages' % DATA_DIR
-#IMAGE_TRAIN_DIR = 'data/VOC2012/train/JPEGImages'
+IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % DATA_DIR
+#IMAGE_TRAIN_DIR = '%s/tmp/JPEGImages' % DATA_DIR
+#IMAGE_TRAIN_DIR = '%s/data/VOC2012/train/JPEGImages' % V1_DIR
 #IMAGE_TEST_DIR = '%s/test/JPEGImages' % DATA_DIR
 IMAGE_TEST_DIR = '%s/tmp/JPEGImages' % DATA_DIR
 
-IMAGE_OUT_DIR = "%s/out" % DATA_DIR
+IMAGE_OUT_DIR = "%s/out/%s" % (DATA_DIR, VERSION)
 
 JSON = False
 
-# term scale in loss formula
-#object_scale = 1
-noobject_scale = 0.5
-class_scale = 1.0
-coord_scale = 5.0
-
 # image
-# v1
-#IMG_H = 448
-#IMG_W = 448
-
-# v2
-IMG_H = 416
-IMG_W = 416
+if VERSION == "v1":
+    IMG_H, IMG_W = 448, 448
+elif VERSION == "v2":
+    IMG_H, IMG_W = 416, 416
+else:
+    print("Unsupported version: %s" % VERSION)
+    exit(-1)
 
 IMG_CH = 3
 
@@ -70,14 +67,32 @@ CLASSES = ["aeroplane", "bicycle", "bird", "boat", "bottle",
     "train", "tvmonitor"]
 #   18          19
 
-# box priors, (w, h), based on not coordinates but grid
+# box priors for voc2012, (w, h), based on not coordinates but grid
 anchors = [1.32,1.73, 3.19,4.01, 5.05,8.10, 9.47,4.84, 11.23,10.01]
 
 # feature map H x W
-H = 13
-W = 13
-# Bounding box each feature map location
-B = 5
+if VERSION == "v1":
+    H, W = 7, 7
+    B = 2
+
+    # term scale in loss formula
+    object_scale = 1.0
+    noobject_scale = 0.5
+    class_scale = 1.0
+    coord_scale = 5.0
+elif VERSION == "v2":
+    H, W = 13, 13
+    B = 5
+
+    # term scale in loss formula
+    object_scale = 5.0
+    noobject_scale = 1.0
+    class_scale = 1.0
+    coord_scale = 1.0
+else:
+    print("Unsupported version: %s" % VERSION)
+    exit(-1)
+
 # class num
 C = len(CLASSES)
 
