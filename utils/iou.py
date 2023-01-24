@@ -1,4 +1,6 @@
 
+import numpy as np
+
 import config
 
 import tensorflow._api.v2.compat.v1 as tf
@@ -7,8 +9,8 @@ tf.disable_v2_behavior()
 
 def _extract_coords(coords):
     # w, h is normalized to sqrt(w / config.IMG_W), sqrt(h / config.IMG_W) upon preprocess, we should restore w, h to calculate area
-    # grid_w = config.IMG_W / config.S, grid_h = config.IMG_H / config.S
-    wh = coords[:, :, :, 2:4] ** 2 * config.S  # unit: grid cell, w = orig_w / grid_w, h = orig_h / grid_h
+    # grid_w = config.IMG_W / config.W, grid_h = config.IMG_H / config.H
+    wh = coords[:, :, :, 2:4] ** 2 * np.reshape([config.W, config.H], [1, 1, 1, 2])  # unit: grid cell, w = orig_w / grid_w, h = orig_h / grid_h
     area = wh[:, :, :, 0] * wh[:, :, :, 1]  # unit: grid cell^2
     xy_centre = coords[:, :, :, 0:2]  # [batch, SS, B, 2]
     left_top = xy_centre - (wh * 0.5)  # [batch, SS, B, 2]

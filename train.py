@@ -28,7 +28,8 @@ cfg = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
 cfg.gpu_options.allow_growth = True
 
 
-SS, B, C = config.S * config.S, config.B, config.C
+H, W = config.H, config.W
+B, C = config.B, config.C
 
 
 def train():
@@ -51,10 +52,14 @@ def train():
         #To be able to feed with batches of different size, the first dimension should be None
         image_ph = tf.placeholder(dtype=tf.float32, shape=config.placeholder_image_shape, name="image_ph")
         bounding_box_ph_dict = {
-            "class_probs": tf.placeholder(dtype=tf.float32, shape=(None, SS, C), name="class_probs_ph"),
-            "class_proids": tf.placeholder(dtype=tf.float32, shape=(None, SS, C), name="class_proids_ph"),
-            "object_proids": tf.placeholder(dtype=tf.float32, shape=(None, SS, B), name="object_proids_ph"),
-            "coords": tf.placeholder(dtype=tf.float32, shape=(None, SS, B, 4), name="coords_ph")
+            # v1
+            #"class_probs": tf.placeholder(dtype=tf.float32, shape=(None, H*W, C), name="class_probs_ph"),
+            #"class_proids": tf.placeholder(dtype=tf.float32, shape=(None, H*W, C), name="class_proids_ph"),
+            # v2
+            "class_probs": tf.placeholder(dtype=tf.float32, shape=(None, H*W, B, C), name="class_probs_ph"),
+            "class_proids": tf.placeholder(dtype=tf.float32, shape=(None, H*W, B, C), name="class_proids_ph"),
+            "object_proids": tf.placeholder(dtype=tf.float32, shape=(None, H*W, B), name="object_proids_ph"),
+            "coords": tf.placeholder(dtype=tf.float32, shape=(None, H*W, B, 4), name="coords_ph")
         }
         dropout_keep_prob_ph = tf.placeholder(tf.float32, name="dropout_keep_prob")
 
