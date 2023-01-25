@@ -25,7 +25,7 @@ class FastYolo(object):
     def opt(self, net_out, nd_class_probs, nd_class_proids, nd_object_proids, nd_coords):
         # parameters
         coord_scale = config.coord_scale
-        #conf_scale = config.object_scale # object scale set to default value 1.0
+        obj_scale = config.object_scale
         noobj_scale = config.noobject_scale
         class_scale = config.class_scale
         print('scales  = {}'.format([coord_scale, noobj_scale, class_scale]))
@@ -61,7 +61,7 @@ class FastYolo(object):
         best_box = find_best_box(nd_coords_predict, nd_coords)
         nd_confids = best_box * nd_object_proids
 
-        nd_confid_weight = noobj_scale * (1.0 - nd_confids) + nd_confids
+        nd_confid_weight = noobj_scale * (1.0 - nd_confids) + obj_scale * nd_confids
 
         """
         coordinate weight, we need to multiply nd_confids here,

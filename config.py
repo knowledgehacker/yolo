@@ -27,12 +27,6 @@ IMAGE_OUT_DIR = "%s/out" % DATA_DIR
 
 JSON = False
 
-# term scale in loss formula
-#object_scale = 1
-noobject_scale = 0.5
-class_scale = 1.0
-coord_scale = 5.0
-
 # image
 IMG_H = 448
 IMG_W = 448
@@ -66,6 +60,12 @@ S = 7
 B = 2
 # class num
 C = len(CLASSES)
+
+# term scale in loss formula
+object_scale = 1.0
+noobject_scale = 0.5
+class_scale = 1.0
+coord_scale = 5.0
 
 # P(object) * P(class|object), hope P(class|object) > THRESHOLD, P(object) ~ 1.0
 THRESHOLD = 0.3
