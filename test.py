@@ -47,7 +47,7 @@ def test():
             "object_proids": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "object_proids_ph:0")),
             "coords": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "coords_ph:0"))
         }
-        dropout_keep_prob_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "dropout_keep_prob:0"))
+        dropout_keep_prob_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "dropout_keep_prob_ph:0"))
 
         # get net_out and loss
         net_out_op = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "net_out:0"))

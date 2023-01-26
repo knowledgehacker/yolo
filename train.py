@@ -77,9 +77,9 @@ def train():
         else:
             print("Unsupported version: %s" % config.VERSION)
             exit(-1)
-        dropout_keep_prob_ph = tf.placeholder(tf.float32, name="dropout_keep_prob")
+        dropout_keep_prob_ph = tf.placeholder(tf.float32, name="dropout_keep_prob_ph")
 
-        net_out_op = model.forward(image_ph, config.data_format, config.input_shape, dropout_keep_prob_ph)
+        net_out_op = model.forward(image_ph, config.input_shape, config.data_format, dropout_keep_prob_ph, True)
         loss_op = model.opt(net_out_op, bounding_box_ph_dict["class_probs"], bounding_box_ph_dict["class_proids"],
                             bounding_box_ph_dict["object_proids"],
                             bounding_box_ph_dict["coords"])

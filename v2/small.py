@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import config
+from utils.compose import ConvBatchLReLu, ConvBatchLReLu_loop
 
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()
 
-from keras.models import Model
-from keras.layers import Input, Conv2D, MaxPool2D, BatchNormalization, LeakyReLU
+from keras.layers import Conv2D, MaxPool2D
 
 H, W = config.H, config.W
 B = config.B
@@ -30,24 +30,6 @@ def concat(x, data_format):
     return tf.concat(x, axis=axis)
 
 
-def ConvBatchLReLu(x, filter, size, stride, padding_mode, data_format, index, trainable):
-    x = Conv2D(filter, kernel_size=(size, size), strides=(stride, stride),
-               padding=padding_mode, data_format=data_format, name='conv_{}'.format(index),
-               use_bias=False, trainable=trainable)(x)
-    x = BatchNormalization(name='norm_{}'.format(index), trainable=trainable)(x)
-    x = LeakyReLU(alpha=0.1)(x)
-
-    return x
-
-
-def ConvBatchLReLu_loop(x, convs, padding_mode, data_format, index, trainable):
-    for (filter, size, stride) in convs:
-        x = ConvBatchLReLu(x, filter, size, stride, padding_mode, data_format, index, trainable)
-        index += 1
-
-    return x
-
-
 """
 DarNet for yolo v2 are as follows.
 Note that the second link takes pooling layer into account, thus the first and second links are equivalent.
@@ -58,10 +40,9 @@ class DarkNet(object):
     def __init__(self):
         print("small")
 
-    def forward(self, image_batch, data_format, input_shape, dropout_keep_prob, trainable=True):
+    def build(self, input_image, data_format, trainable):
         padding_mode = 'same'
 
-        input_image = Input(shape=input_shape, name="input_image")
         # Layer 1
         x = ConvBatchLReLu(input_image, 32, 3, 1, padding_mode, data_format, 1, trainable)
         x = MaxPool2D(pool_size=(2, 2), data_format=data_format, name="maxpool1_416to208")(x)
@@ -107,12 +88,6 @@ class DarkNet(object):
         x = ConvBatchLReLu(x, 1024, 3, 1, padding_mode, data_format, 21, trainable)
 
         # Layer 22
-        x = Conv2D(filters=B * (C + 1 + 4), kernel_size=(1, 1), strides=(1, 1), padding=padding_mode, data_format=data_format, name='conv_22')(x)
+        output = Conv2D(filters=B * (C + 1 + 4), kernel_size=(1, 1), strides=(1, 1), padding=padding_mode, data_format=data_format, name='conv_22')(x)
 
-        model = Model(input_image, x)
-
-        #model.summary()
-
-        net_out = tf.identity(model.call(image_batch), name="net_out")
-
-        return net_out
+        return output

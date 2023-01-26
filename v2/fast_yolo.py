@@ -9,6 +9,9 @@ from utils.iou import find_best_box
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()
 
+from keras.models import Model
+from keras.layers import Input
+
 H, W = config.H, config.W
 B = config.B
 C = config.C
@@ -19,8 +22,14 @@ class FastYolo(object):
         #print("FastYolo")
         self.net = DarkNet()
 
-    def forward(self, image_batch, data_format, input_shape, dropout_keep_prob=tf.constant(0.0, dtype=tf.float32)):
-        net_out = self.net.forward(image_batch, data_format, input_shape, dropout_keep_prob)
+    def forward(self, image_batch, input_shape, data_format, dropout_keep_prob, trainable=True):
+        input_image = Input(shape=input_shape, name="input_image")
+        output = self.net.build(input_image, data_format, trainable)
+
+        model = Model(input_image, output)
+        #model.summary()
+
+        net_out = tf.identity(model.call(image_batch), name="net_out")
 
         return net_out
 

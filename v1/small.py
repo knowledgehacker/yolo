@@ -1,12 +1,10 @@
 import config
+from utils.compose import ConvBatchLReLu, ConvBatchLReLu_loop, FullyConnRelu
 
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()
 
-from keras import Sequential
-from keras.layers import Conv2D, MaxPooling2D
-from keras.layers import BatchNormalization, LeakyReLU
-from keras.layers.core import Flatten, Dense, Dropout
+from keras.layers import MaxPool2D, Flatten, Dense, Dropout
 
 H, W = config.H, config.W
 B = config.B
@@ -19,79 +17,54 @@ class DarkNet(object):
         print("small")
     """
 
-    def forward(self, image_batch, data_format, input_shape, dropout_keep_prob):
+    def build(self, input_image, data_format, dropout_keep_prob, trainable=True):
         # 24 conv + 3 fully connected layers
         padding_mode = 'same'
 
-        model = Sequential()
-        # 2 conv layers
-        convs = [(64, 7, 2), (192, 3, 1)]
-        for (filter, size, stride) in convs:
-            model.add(Conv2D(filter, kernel_size=(size, size), strides=(stride, stride), input_shape=input_shape, padding=padding_mode, data_format=data_format))
-            #model.add(BatchNormalization())
-            model.add(LeakyReLU(alpha=0.1))
-            model.add(MaxPooling2D(pool_size=(2, 2), data_format=data_format))
+        # layer 1
+        x = ConvBatchLReLu(input_image, 64, 7, 2, padding_mode, data_format, 1, trainable)
+        x = MaxPool2D(pool_size=(2, 2), data_format=data_format, name="maxpool1_448to224")(x)
 
-        # 3 conv layers
+        # layer 2
+        x = ConvBatchLReLu(x, 192, 3, 1, padding_mode, data_format, 2, trainable)
+        x = MaxPool2D(pool_size=(2, 2), data_format=data_format, name="maxpool1_224to112")(x)
+
+        # layer 3 - 5
         convs = [(128, 1, 1), (256, 3, 1), (256, 1, 1)]
-        for (filter, size, stride) in convs:
-            model.add(Conv2D(filter, kernel_size=(size, size), strides=(stride, stride), input_shape=input_shape, padding=padding_mode, data_format=data_format))
-            #model.add(BatchNormalization())
-            model.add(LeakyReLU(alpha=0.1))
+        x = ConvBatchLReLu_loop(x, convs, padding_mode, data_format, 3, trainable)
 
-        # 1 conv + pooling layer
-        model.add(Conv2D(512, kernel_size=(3, 3), strides=(1, 1), input_shape=input_shape, padding=padding_mode, data_format=data_format))
-        #model.add(BatchNormalization())
-        model.add(LeakyReLU(alpha=0.1))
-        model.add(MaxPooling2D(pool_size=(2, 2), data_format=data_format))
+        # layer 6
+        x = ConvBatchLReLu(x, 512, 3, 1, padding_mode, data_format, 6, trainable)
+        x = MaxPool2D(pool_size=(2, 2), data_format=data_format, name="maxpool1_112to56")(x)
 
-        # 8 conv layers
+        # layer 7 - 14
         convs = [(256, 1, 1), (512, 3, 1)]
         for i in range(4):
-            for (filter, size, stride) in convs:
-                model.add(Conv2D(filter, kernel_size=(size, size), strides=(stride, stride), input_shape=input_shape, padding=padding_mode, data_format=data_format))
-                #model.add(BatchNormalization())
-                model.add(LeakyReLU(alpha=0.1))
+            x = ConvBatchLReLu_loop(x, convs, padding_mode, data_format, 7 + 2 * i, trainable)
 
-        # 1 conv layer
-        model.add(Conv2D(512, kernel_size=(1, 1), strides=(1, 1), input_shape=input_shape, padding=padding_mode, data_format=data_format))
-        #model.add(BatchNormalization())
-        model.add(LeakyReLU(alpha=0.1))
+        # layer 15
+        x = ConvBatchLReLu(x, 512, 1, 1, padding_mode, data_format, 15, trainable)
 
-        # 1 conv + pooling layer
-        model.add(Conv2D(1024, kernel_size=(3, 3), strides=(1, 1), input_shape=input_shape, padding=padding_mode, data_format=data_format))
-        #model.add(BatchNormalization())
-        model.add(LeakyReLU(alpha=0.1))
-        model.add(MaxPooling2D(pool_size=(2, 2), data_format=data_format))
+        # layer 16
+        x = ConvBatchLReLu(x, 1024, 3, 1, padding_mode, data_format, 16, trainable)
+        x = MaxPool2D(pool_size=(2, 2), data_format=data_format, name="maxpool1_56to28")(x)
 
-        # 4 conv layers
+        # layer 17 - 20
         convs = [(512, 1, 1), (1024, 3, 1)]
         for i in range(2):
-            for (filter, size, stride) in convs:
-                model.add(Conv2D(filter, kernel_size=(size, size), strides=(stride, stride), input_shape=input_shape, padding=padding_mode, data_format=data_format))
-                #model.add(BatchNormalization())
-                model.add(LeakyReLU(alpha=0.1))
+            x = ConvBatchLReLu_loop(x, convs, padding_mode, data_format, 17 + 2 * i, trainable)
 
-        # 4 conv layers
+        # layer 21 - 24
         convs = [(1024, 3, 1), (1024, 3, 2), (1024, 3, 1), (1024, 3, 1)]
-        for (filter, size, stride) in convs:
-            model.add(Conv2D(filter, kernel_size=(size, size), strides=(stride, stride), padding=padding_mode, data_format=data_format))
-            #model.add(BatchNormalization())
-            model.add(LeakyReLU(alpha=0.1))
+        x = ConvBatchLReLu_loop(x, convs, padding_mode, data_format, 21, trainable)
 
         # 3 fully connected layers
-        model.add(Flatten())
-        model.add(Dense(512))
-        model.add(LeakyReLU(alpha=0.1))
-        model.add(Dense(4096))
-        model.add(LeakyReLU(alpha=0.1))
+        x = Flatten()(x)
+        x = FullyConnRelu(x, 512)
+        x = FullyConnRelu(x, 4096)
 
-        model.add(Dropout(rate=1 - dropout_keep_prob))
+        x = Dropout(rate=1 - dropout_keep_prob)(x)
 
-        model.add(Dense(H*W * (C + B * 5)))
+        output = Dense(H*W * (C + B * 5), name="output")(x)
 
-        # model.summary()
-
-        net_out = tf.identity(model.call(image_batch), name="net_out")
-
-        return net_out
+        return output
