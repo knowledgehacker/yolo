@@ -115,8 +115,8 @@ def batch(image_dir, chunks, test=False):
             obj[4] = math.sqrt(obj[4])
             grid_cx = int(cx)
             grid_cy = int(cy)
-            obj[1] = cx - grid_cx  # centerx
-            obj[2] = cy - grid_cy  # centery
+            obj[1] = cx - grid_cx
+            obj[2] = cy - grid_cy
 
             grid_cell = grid_cy * W + grid_cx
 
@@ -145,7 +145,7 @@ def batch(image_dir, chunks, test=False):
     inp_feed_val = np.array(image_batch)
     loss_feed_val = {
         'class_probs': np.array(probs_batch),
-        'class_proids': np.array(probs_batch),
+        'class_proids': np.array(proids_batch),
         'object_proids': np.array(confs_batch),
         'coords': np.array(coord_batch)
     }

@@ -13,7 +13,8 @@ B = config.B
 C = config.C
 
 
-# the function to implement the orgnization layer (thanks to github.com/allanzelener/YAD2K)
+# the function to implement the reorg layer,
+# refers to https://github.com/allanzelener/YAD2K/blob/master/yad2k/models/keras_yolo.py
 def space_to_depth_x2(x, data_format, name):
     df = "NHWC"
     if data_format == "channels_first":
@@ -22,8 +23,8 @@ def space_to_depth_x2(x, data_format, name):
     return tf.space_to_depth(x, block_size=2, data_format=df, name=name)
 
 
-def concat(x, data_format):
-    axis = -1
+def depth_concat(x, data_format):
+    axis = -1   # last dimension, equivalent to 3 here
     if data_format == "channels_first":
         axis = 1
 
@@ -37,8 +38,10 @@ https://github.com/AlexeyAB/darknet/issues/279#issuecomment-397248821
 https://ethereon.github.io/netscope/#/gist/d08a41711e48cf111e330827b1279c31
 """
 class DarkNet(object):
+    """
     def __init__(self):
         print("small")
+    """
 
     def build(self, input_image, data_format, trainable):
         padding_mode = 'same'
@@ -65,7 +68,7 @@ class DarkNet(object):
         convs = [(512, 3, 1), (256, 1, 1), (512, 3, 1), (256, 1, 1), (512, 3, 1)]
         x = ConvBatchLReLu_loop(x, convs, padding_mode, data_format, 9, trainable)
 
-        skip_connection = x
+        passthrough = x
         x = MaxPool2D(pool_size=(2, 2), data_format=data_format, name="maxpool1_26to13")(x)
 
         # Layer 14 - 20
@@ -80,9 +83,12 @@ class DarkNet(object):
         tf.space_to_depth converts conv13(?, 512, 26, 26) to (?, 512 * block_size * block_size, 26 / block_size, 26 / block_size).
         to be able to concatenate with conv20(?, 1024, 13, 13), block_size = 2, that is what space_to_depth_x2 does.
         """
-        skip_connection = space_to_depth_x2(skip_connection, data_format, "reorg")  # (?, 2048, 13, 13) in NCHW?
+        passthrough = space_to_depth_x2(passthrough, data_format, "reorg")  # (?, 2048, 13, 13) in NCHW?
+        # reduce channels from 512 to 64 before shape transform as ResNet
+        #passthrough = ConvBatchLReLu(passthrough, 64, 1, 1, padding_mode, data_format, "passthrough", trainable)
+        #passthrough = space_to_depth_x2(passthrough, data_format, "reorg")  # (?, 256, 13, 13) in NCHW?
 
-        x = concat([skip_connection, x], data_format)
+        x = depth_concat([passthrough, x], data_format)
 
         # Layer 21
         x = ConvBatchLReLu(x, 1024, 3, 1, padding_mode, data_format, 21, trainable)

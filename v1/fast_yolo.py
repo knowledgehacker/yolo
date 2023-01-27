@@ -33,11 +33,11 @@ class FastYolo(object):
     #def opt(self, net_out, class_probs, class_proids, object_proids, coords):
     def opt(self, net_out, nd_class_probs, nd_class_proids, nd_object_proids, nd_coords):
         # parameters
-        coord_scale = config.coord_scale
+        class_scale = config.class_scale
         obj_scale = config.object_scale
         noobj_scale = config.noobject_scale
-        class_scale = config.class_scale
-        print('scales  = {}'.format([coord_scale, noobj_scale, class_scale]))
+        coord_scale = config.coord_scale
+        print('scales  = {}'.format([class_scale, obj_scale, noobj_scale, coord_scale]))
 
         """
         The following code calculate weight vector of three parts: class, coordinate, confidence,
@@ -79,7 +79,6 @@ class FastYolo(object):
         bounding_box_coord = tf.concat(4 * [tf.expand_dims(nd_confids, -1)], 3)
         nd_coord_weight = coord_scale * bounding_box_coord
 
-        # reconstruct label with adjusted confs. Q: nd_object_proids or nd_confids in true???
         true = tf.concat([flat(nd_class_probs), flat(nd_confids), flat(nd_coords)], 1)
         weights = tf.concat([flat(nd_class_weight), flat(nd_confid_weight), flat(nd_coord_weight)], 1)
         weighted_square_error = weights * ((net_out - true) ** 2)
