@@ -33,15 +33,8 @@ JSON = False
 
 
 # image
-# v1
-#IMG_H = 448
-#IMG_W = 448
+IMG_H, IMG_W, IMG_CH = 416, 416, 3
 
-# v2
-IMG_H = 416
-IMG_W = 416
-
-IMG_CH = 3
 
 if DEVICE_TYPE == "gpu":
     data_format = "channels_first"
@@ -65,22 +58,24 @@ CLASSES = ["aeroplane", "bicycle", "bird", "boat", "bottle",
     "train", "tvmonitor"]
 #   18          19
 
-# box priors, (w, h), based on not coordinates but grid
-anchors = [1.32,1.73, 3.19,4.01, 5.05,8.10, 9.47,4.84, 11.23,10.01]
+# class num
+C = len(CLASSES)
 
 # feature map H x W
 H = 13
 W = 13
 # Bounding box each feature map location
 B = 5
-# class num
-C = len(CLASSES)
 
 # term scale in loss formula
 object_scale = 5.0
 noobject_scale = 1.0
 class_scale = 1.0
 coord_scale = 1.0
+
+# box priors, (w, h), based on not coordinates but grid
+# https://github.com/pjreddie/darknet/blob/master/cfg/yolov2-voc.cfg
+anchors = [1.32,1.73, 3.19,4.01, 5.05,8.10, 9.47,4.84, 11.23,10.01]
 
 # P(object) * P(class|object), hope P(class|object) > THRESHOLD, P(object) ~ 1.0
 THRESHOLD = 0.3
@@ -100,11 +95,9 @@ TEST_BATCH_SIZE = 1
 #TEST_BATCH_SIZE = 300
 
 OPTIMIZER = 'rmsprop'
-# !!!Important, for tiny model, use lr 1e-4, for large model, use lr 1e-3
-LR = 1e-5
+LR = 1e-6   # starts with 1e-5 gets nan after ~18 steps
 MOMENTUM = 0.9
 DECAY = 5e-4
 
 TRAIN_KEEP_PROB = 0.5
 TEST_KEEP_PROB = 1.0
-

@@ -134,11 +134,9 @@ def batch(image_dir, chunks, test=False):
         coord_batch.append(coord)
 
     inp_feed_val = np.array(image_batch)
-    #print("--- inp_feed_val.shape")
-    #print(inp_feed_val.shape)
     loss_feed_val = {
         'class_probs': np.array(probs_batch),
-        'class_proids': np.array(probs_batch),
+        'class_proids': np.array(proids_batch),
         'object_proids': np.array(confs_batch),
         'coords': np.array(coord_batch)
     }

@@ -41,25 +41,26 @@ class FastYolo(object):
 
         nd_net_out = tf.reshape(net_out, [-1, H, W, B, (C + 1 + 4)])
 
-        nd_coords_predict = nd_net_out[:, :, :, :, C + 1:C + 5]
-        nd_coords_predict = tf.reshape(nd_coords_predict, [-1, H * W, B, 4])
-        adjusted_coords_xy = tf.sigmoid(nd_coords_predict[:, :, :, 0:2])
-        adjusted_coords_wh = tf.sqrt(
-            tf.exp(nd_coords_predict[:, :, :, 2:4]) * np.reshape(config.anchors, [1, 1, B, 2]) / np.reshape([W, H], [1, 1, 1, 2]))
-        nd_coords_predict = tf.concat([adjusted_coords_xy, adjusted_coords_wh], 3)
-
-        adjusted_c = tf.sigmoid(nd_net_out[:, :, :, :, C])
-        adjusted_c = tf.reshape(adjusted_c, [-1, H * W, B, 1])
-
         adjusted_prob = tf.nn.softmax(nd_net_out[:, :, :, :, :C])
         adjusted_prob = tf.reshape(adjusted_prob, [-1, H * W, B, C])
 
-        adjusted_net_out = tf.concat([adjusted_coords_xy, adjusted_coords_wh, adjusted_c, adjusted_prob], 3)
+        adjusted_object = tf.sigmoid(nd_net_out[:, :, :, :, C])
+        adjusted_object = tf.reshape(adjusted_object, [-1, H * W, B, 1])
+
+        nd_coords_predict = nd_net_out[:, :, :, :, C + 1:C + 5]
+        nd_coords_predict = tf.reshape(nd_coords_predict, [-1, H * W, B, 4])
+        adjusted_coords_xy = tf.sigmoid(nd_coords_predict[:, :, :, 0:2])
+        normalized_anchors = np.reshape(config.anchors, [1, 1, B, 2]) / np.reshape([W, H], [1, 1, 1, 2])
+        adjusted_coords_wh = tf.sqrt(tf.exp(nd_coords_predict[:, :, :, 2:4]) * normalized_anchors)
+        adjusted_nd_coords_predict = tf.concat([adjusted_coords_xy, adjusted_coords_wh], 3)
+
+        #adjusted_net_out = tf.concat([adjusted_prob, adjusted_object, adjusted_coords_xy, adjusted_coords_wh], 3)
+        adjusted_net_out = tf.concat([adjusted_prob, adjusted_object, adjusted_nd_coords_predict], 3)
 
         """
         confidence weight, nd_confids get the bounding box that has the highest iou.
         """
-        best_box = find_best_box(nd_coords_predict, nd_coords)
+        best_box = find_best_box(adjusted_nd_coords_predict, nd_coords)
         nd_confids = best_box * nd_object_proids
 
         nd_confid_weight = noobj_scale * (1.0 - nd_confids) + obj_scale * nd_confids
@@ -68,7 +69,9 @@ class FastYolo(object):
         class weight, multiply nd_confids to only penalizes the bounding box has the highest iou.
         """
         bounding_box_class = tf.concat(C * [tf.expand_dims(nd_confids, -1)], 3)
-        nd_class_weight = class_scale * nd_class_proids * bounding_box_class
+        # the following two statements should be equivalent???
+        #nd_class_weight = class_scale * nd_class_proids * bounding_box_class
+        nd_class_weight = class_scale * bounding_box_class
 
         """
         coordinate weight, multiply nd_confids to only penalizes the bounding box has the highest iou.
