@@ -7,7 +7,10 @@ def ConvBatchLReLu(x, filter, size, stride, padding_mode, data_format, index, tr
     x = Conv2D(filter, kernel_size=(size, size), strides=(stride, stride),
                padding=padding_mode, data_format=data_format, name='conv_{}'.format(index),
                use_bias=False, trainable=trainable)(x)
-    x = BatchNormalization(name='norm_{}'.format(index), trainable=trainable)(x)
+    bn_axis = -1
+    if data_format == "channels_first":
+        bn_axis = 1
+    x = BatchNormalization(axis=bn_axis, name='norm_{}'.format(index), trainable=trainable)(x)
     x = LeakyReLU(alpha=0.1)(x)
 
     return x
