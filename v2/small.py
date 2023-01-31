@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import numpy as np
-
 import config
 from utils.compose import ConvBatchLReLu, ConvBatchLReLu_loop, Conv
 from v2.darknet import DarkNet
@@ -87,7 +85,7 @@ class Small(object):
         to be able to concatenate with conv20(?, 1024, 13, 13), block_size = 2, that is what space_to_depth_x2 does.
         """
         passthrough = Lambda(space_to_depth_x2, arguments={"data_format": data_format, "name": "reorg"})(layer_13_output)
-        #passthrough = space_to_depth_x2(conv13_output, data_format, "reorg")  # (?, 2048, 13, 13) in NCHW?
+        #passthrough = space_to_depth_x2(layer_13_output, data_format, "reorg")  # (?, 2048, 13, 13) in NCHW?
 
         x = depth_concat([passthrough, x], data_format)
 

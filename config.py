@@ -65,6 +65,10 @@ if VERSION == "v1":
     LR = 1e-5
     MOMENTUM = 0.9
     DECAY = 5e-4
+
+    # large batch, ex 200, does not work, I don't know why
+    BATCH_SIZE = 64
+    TEST_BATCH_SIZE = 1
 elif VERSION == "v2":
     IMG_H, IMG_W, IMG_CH = 416, 416, 3
 
@@ -81,6 +85,10 @@ elif VERSION == "v2":
     LR = 1e-6   # starts with 1e-5 gets nan after ~18 steps
     MOMENTUM = 0.9
     DECAY = 5e-4
+
+    # large batch, ex 200, does not work, I don't know why
+    BATCH_SIZE = 16
+    TEST_BATCH_SIZE = 1
 
     # box priors for voc2012, (w, h), based on not coordinates but grid
     # https://github.com/pjreddie/darknet/blob/master/cfg/yolov2-voc.cfg
@@ -112,11 +120,6 @@ NUM_EPOCH = 90
 STEPS_PER_CKPT = 1
 
 VALIDATE = False
-
-# large batch, ex 200, does not work, I don't know why
-BATCH_SIZE = 16
-TEST_BATCH_SIZE = 1
-#TEST_BATCH_SIZE = 300
 
 TRAIN_KEEP_PROB = 0.5
 TEST_KEEP_PROB = 1.0

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
+
 import config
-from v1.small import DarkNet
+from v1.small import Small
 from utils.iou import find_best_box
 
 import tensorflow._api.v2.compat.v1 as tf
@@ -17,18 +18,18 @@ C = config.C
 class FastYolo(object):
     def __init__(self):
         #print("FastYolo")
-        self.net = DarkNet()
+        self.net = Small()
 
     def forward(self, image_batch, input_shape, data_format, dropout_keep_prob, trainable=True):
         input_image = Input(shape=input_shape, name="input_image")
-        output = self.net.build(input_image, data_format, dropout_keep_prob, trainable)
+        output, layer_weights = self.net.build(input_image, data_format, dropout_keep_prob, trainable)
 
         model = Model(input_image, output)
         # model.summary()
 
         net_out = tf.identity(model.call(image_batch), name="net_out")
 
-        return net_out
+        return net_out, layer_weights
 
     #def opt(self, net_out, class_probs, class_proids, object_proids, coords):
     def opt(self, net_out, nd_class_probs, nd_class_proids, nd_object_proids, nd_coords):
