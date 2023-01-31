@@ -29,12 +29,10 @@ class DarkNet(object):
         x = ConvBatchLReLu(x, 192, 3, 1, padding_mode, data_format, 2, trainable)
         x = MaxPool2D(pool_size=(2, 2), data_format=data_format, name="maxpool1_224to112")(x)
 
-        # layer 3 - 5
-        convs = [(128, 1, 1), (256, 3, 1), (256, 1, 1)]
+        # layer 3 - 6
+        convs = [(128, 1, 1), (256, 3, 1), (256, 1, 1), (512, 3, 1)]
         x = ConvBatchLReLu_loop(x, convs, padding_mode, data_format, 3, trainable)
 
-        # layer 6
-        x = ConvBatchLReLu(x, 512, 3, 1, padding_mode, data_format, 6, trainable)
         x = MaxPool2D(pool_size=(2, 2), data_format=data_format, name="maxpool1_112to56")(x)
 
         # layer 7 - 14
@@ -42,11 +40,10 @@ class DarkNet(object):
         for i in range(4):
             x = ConvBatchLReLu_loop(x, convs, padding_mode, data_format, 7 + 2 * i, trainable)
 
-        # layer 15
-        x = ConvBatchLReLu(x, 512, 1, 1, padding_mode, data_format, 15, trainable)
+        # layer 15 - 16
+        convs = [(512, 1, 1), (1024, 3, 1)]
+        x = ConvBatchLReLu_loop(x, convs, padding_mode, data_format, 15, trainable)
 
-        # layer 16
-        x = ConvBatchLReLu(x, 1024, 3, 1, padding_mode, data_format, 16, trainable)
         x = MaxPool2D(pool_size=(2, 2), data_format=data_format, name="maxpool1_56to28")(x)
 
         # layer 17 - 20

@@ -3,7 +3,7 @@
 import numpy as np
 
 import config
-from v2.small import DarkNet
+from v2.small import Small
 from utils.iou import find_best_box
 
 import tensorflow._api.v2.compat.v1 as tf
@@ -26,24 +26,25 @@ No, YOLO v1 runs well.
 Yes, starts with 1e-5 gets nan after ~18 steps. Start with 1e-6 works, can switch to 1e-5 after 1 epoch.
 3) parameter gradient explosion?
 Probably, output in some layer of DarkNet too big?
+Try to use weights pretrained darknet19 on ImageNet works with learning rate starting with 1e-5. 
 4) wrong loss implementation?
 Possible.
 """
 class FastYolo(object):
     def __init__(self):
         #print("FastYolo")
-        self.net = DarkNet()
+        self.net = Small()
 
     def forward(self, image_batch, input_shape, data_format, dropout_keep_prob, trainable=True):
         input_image = Input(shape=input_shape, name="input_image")
-        output = self.net.build(input_image, data_format, trainable)
+        output, conv13_weights = self.net.build(input_image, data_format, dropout_keep_prob, trainable)
 
         model = Model(input_image, output)
         #model.summary()
 
         net_out = tf.identity(model.call(image_batch), name="net_out")
 
-        return net_out
+        return net_out, conv13_weights
 
     #def opt(self, net_out, class_probs, class_proids, object_proids, coords):
     def opt(self, net_out, nd_class_probs, nd_class_proids, nd_object_proids, nd_coords):
