@@ -116,14 +116,12 @@ def _main(args):
 
             # use padding 'same' for all conv layers, by minglin
             #padding = 'same' if pad == 1 and stride == 1 else 'valid'
-            padding = 'same'
+            padding = 'same' if pad == 1 else 'valid'
 
             # Setting weights.
             # Darknet serializes convolutional weights as:
             # [bias/beta, [gamma, mean, variance], conv_weights]
             prev_layer_shape = K.int_shape(prev_layer)
-            #print("--- prev_layer_shape")
-            #print(prev_layer_shape)
 
             channels = prev_layer_shape[-1]
             if data_format == "channels_first":
