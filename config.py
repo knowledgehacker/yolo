@@ -5,7 +5,7 @@ VERSION = "v2"
 
 DEVICE_TYPE = "gpu"
 
-MODLE_DIR = "models"
+MODLE_DIR = "models/%s" % VERSION
 
 CKPT_DIR = 'ckpt/%s' % VERSION
 

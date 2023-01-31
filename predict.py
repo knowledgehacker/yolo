@@ -39,7 +39,7 @@ def findboxes_v1(net_out, w, h):
 	meta = {
 		"classes": config.C,
 		"num": config.B,
-		"side": config.S
+		"side": config.H
 	}
 	threshold = config.THRESHOLD
 	boxes = yolo_box_constructor(meta, net_out, w, h, threshold)
