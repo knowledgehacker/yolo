@@ -67,7 +67,7 @@ if VERSION == "v1":
     DECAY = 5e-4
 
     # large batch, ex 200, does not work, I don't know why
-    BATCH_SIZE = 64
+    BATCH_SIZE = 32
     TEST_BATCH_SIZE = 1
 
     # pretrain network

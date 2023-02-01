@@ -79,7 +79,8 @@ def train():
             exit(-1)
         dropout_keep_prob_ph = tf.placeholder(tf.float32, name="dropout_keep_prob_ph")
 
-        net_out_op, layer_weights_op = model.forward(image_ph, config.input_shape, config.data_format, dropout_keep_prob_ph, True)
+        net_out_op, pretrained_model = model.forward(image_ph, config.input_shape, config.data_format,
+                                                     dropout_keep_prob_ph, True)
         loss_op = model.opt(net_out_op, bounding_box_ph_dict["class_probs"], bounding_box_ph_dict["class_proids"],
                             bounding_box_ph_dict["object_proids"],
                             bounding_box_ph_dict["coords"])
@@ -94,6 +95,9 @@ def train():
         """
 
         tf.global_variables_initializer().run()
+
+        # load weights after initializing global variables to avoid pretrained weights being re-initialized
+        pretrained_model.load_weights("data/weights/%s.h5" % config.pt_net)
 
         # create saver
         saver = tf.train.Saver(tf.global_variables(), max_to_keep=1)
@@ -139,10 +143,6 @@ def train():
 
                 # train data
                 print(current_time(), "batch %d train data starts ..." % step)
-                """
-                layer_weights = sess.run([layer_weights_op], feed_dict={image_ph: images, dropout_keep_prob_ph: config.TRAIN_KEEP_PROB})
-                print(layer_weights)
-                """
 
                 feed_dict = dict()
                 feed_dict[image_ph] = images

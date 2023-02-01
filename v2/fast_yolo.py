@@ -37,14 +37,14 @@ class FastYolo(object):
 
     def forward(self, image_batch, input_shape, data_format, dropout_keep_prob, trainable=True):
         input_image = Input(shape=input_shape, name="input_image")
-        output, conv13_weights = self.net.build(input_image, data_format, dropout_keep_prob, trainable)
+        output, pretrained_model, _ = self.net.build(input_image, data_format, dropout_keep_prob, trainable)
 
         model = Model(input_image, output)
         #model.summary()
 
         net_out = tf.identity(model.call(image_batch), name="net_out")
 
-        return net_out, conv13_weights
+        return net_out, pretrained_model
 
     #def opt(self, net_out, class_probs, class_proids, object_proids, coords):
     def opt(self, net_out, nd_class_probs, nd_class_proids, nd_object_proids, nd_coords):

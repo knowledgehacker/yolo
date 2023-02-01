@@ -28,11 +28,9 @@ class Small(object):
         #pretrained_model.summary()
         # use bias if conv layer not followed by batch normalization
         #pretrained_model.load_weights("data/weights/%s.h5" % config.pt_net, by_name=True, skip_mismatch=True)
-        pretrained_model.load_weights("data/weights/%s.h5" % config.pt_net)
+        #pretrained_model.load_weights("data/weights/%s.h5" % config.pt_net)
 
         layer_20 = pretrained_model.get_layer("relu_20")
-        layer_20_weights = layer_20.weights
-        print(layer_20_weights)
         layer_20_output = layer_20.output
 
         padding_mode = 'same'
@@ -50,4 +48,4 @@ class Small(object):
 
         output = Dense(H*W * (C + B * 5), name="output")(x)
 
-        return output, layer_20_weights
+        return output, pretrained_model, pretrained_model.get_layer("conv_20").weights

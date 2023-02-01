@@ -22,6 +22,7 @@ class DarkNet19(object):
         print("darknet19")
 
     def build(self, input_image, data_format, dropout_keep_prob, trainable=True):
+
         padding_mode = 'same'
 
         # Layer 1

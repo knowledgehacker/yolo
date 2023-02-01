@@ -50,20 +50,9 @@ class Small(object):
         #pretrained_model.summary()
         # use bias if conv layer not followed by batch normalization
         #pretrained_model.load_weights("data/weights/%s.h5" % config.pt_net, by_name=True, skip_mismatch=True)
-        pretrained_model.load_weights("data/weights/%s.h5" % config.pt_net)
+        #pretrained_model.load_weights("data/weights/%s.h5" % config.pt_net)
 
-        """
-        darknet19_model = load_model("data/weights/darknet19.h5")
-        darknet19_topless = Model(darknet19_model.inputs, darknet19_model.layers[-1].output)
-        darknet19_topless.save_weights("data/weights/darknet19_topless.h5")
-        
-        darknet_body = self.net.build(input_image, data_format, dropout_keep_prob, trainable)
-        pretrained_model = Model(darknet_body.input, darknet_body.layers[-1].output)
-        pretrained_model.load_weights("data/weights/darknet19_topless.h5")
-        """
         layer_13 = pretrained_model.get_layer("relu_13")
-        layer_13_weights = layer_13.weights
-        print(layer_13_weights)
         layer_13_output = layer_13.output
 
         layer_18 = pretrained_model.get_layer("relu_18")
@@ -94,4 +83,4 @@ class Small(object):
         # layer 22, use bias
         output = Conv(x, B * (C + 1 + 4), 1, 1, padding_mode, data_format, 22, trainable)
 
-        return output, layer_13_weights
+        return output, pretrained_model, pretrained_model.get_layer("conv_13").weights
