@@ -39,8 +39,8 @@ def Conv(x, filter, size, stride, padding_mode, data_format, index, trainable):
                   use_bias=True, trainable=trainable)(x)
 
 
-def MaxPool(x, size, data_format, name):
-    return MaxPool2D(pool_size=(size, size), data_format=data_format, name=name)(x)
+def MaxPool(x, size, padding_mode, data_format, name):
+    return MaxPool2D(pool_size=(size, size), padding=padding_mode, data_format=data_format, name=name)(x)
 
 
 def FullyConnRelu(x, out_size):

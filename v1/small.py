@@ -15,7 +15,7 @@ B = config.B
 C = config.C
 
 
-# Use pretrained weights from classification model with DarkNet pretrained on ImageNet dataset.
+# Use pretrained weights from classification model with Extraction pretrained on ImageNet dataset.
 class Small(object):
     def __init__(self):
         print("small")
@@ -27,8 +27,8 @@ class Small(object):
         pretrained_model = Model(input_image, darknet_output)
         #pretrained_model.summary()
         # use bias if conv layer not followed by batch normalization
-        #pretrained_model.load_weights("data/weights/extraction.h5", by_name=True, skip_mismatch=True)
-        pretrained_model.load_weights("data/weights/extraction.h5")
+        #pretrained_model.load_weights("data/weights/%s.h5" % config.pt_net, by_name=True, skip_mismatch=True)
+        pretrained_model.load_weights("data/weights/%s.h5" % config.pt_net)
 
         layer_20 = pretrained_model.get_layer("relu_20")
         layer_20_weights = layer_20.weights

@@ -18,22 +18,22 @@ class Extraction(object):
     """
 
     def build(self, input_image, data_format, dropout_keep_prob, trainable=True):
-        # 24 conv + 3 fully connected layers
+
         padding_mode = 'same'
 
         # layer 1
         x = ConvBatchLReLu(input_image, 64, 7, 2, padding_mode, data_format, 1, trainable)
-        x = MaxPool(x, 2, data_format, name="maxpool1_448to224")
+        x = MaxPool(x, 2, padding_mode, data_format, name="maxpool1_448to224")
 
         # layer 2
         x = ConvBatchLReLu(x, 192, 3, 1, padding_mode, data_format, 2, trainable)
-        x = MaxPool(x, 2, data_format, name="maxpool1_224to112")
+        x = MaxPool(x, 2, padding_mode, data_format, name="maxpool1_224to112")
 
         # layer 3 - 6
         convs = [(128, 1, 1), (256, 3, 1), (256, 1, 1), (512, 3, 1)]
         x = ConvBatchLReLu_loop(x, convs, padding_mode, data_format, 3, trainable)
 
-        x = MaxPool(x, 2, data_format, name="maxpool1_112to56")
+        x = MaxPool(x, 2, padding_mode, data_format, name="maxpool1_112to56")
 
         # layer 7 - 14
         convs = [(256, 1, 1), (512, 3, 1)]
@@ -44,7 +44,7 @@ class Extraction(object):
         convs = [(512, 1, 1), (1024, 3, 1)]
         x = ConvBatchLReLu_loop(x, convs, padding_mode, data_format, 15, trainable)
 
-        x = MaxPool(x, 2, data_format, name="maxpool1_56to28")
+        x = MaxPool(x, 2, padding_mode, data_format, name="maxpool1_56to28")
 
         # layer 17 - 20
         convs = [(512, 1, 1), (1024, 3, 1)]

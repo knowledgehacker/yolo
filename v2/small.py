@@ -2,7 +2,7 @@
 
 import config
 from utils.compose import ConvBatchLReLu, ConvBatchLReLu_loop, Conv
-from v2.darknet import DarkNet
+from v2.darknet19 import DarkNet19
 
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()
@@ -38,20 +38,19 @@ def depth_concat(x, data_format):
     #return tf.concat(x, axis=axis)
 
 
-# Use pretrained weights from classification model with DarkNet pretrained on ImageNet dataset.
+# Use pretrained weights from classification model with DarkNet19 pretrained on ImageNet dataset.
 class Small(object):
     def __init__(self):
         print("small")
-        self.net = DarkNet()
+        self.net = DarkNet19()
 
     def build(self, input_image, data_format, dropout_keep_prob, trainable=True):
-
-        darknet_output = self.net.build(input_image, data_format, dropout_keep_prob, trainable)
-        pretrained_model = Model(input_image, darknet_output)
+        net_output = self.net.build(input_image, data_format, dropout_keep_prob, trainable)
+        pretrained_model = Model(inputs=input_image, outputs=net_output)
         #pretrained_model.summary()
         # use bias if conv layer not followed by batch normalization
-        #pretrained_model.load_weights("data/weights/darknet19.h5", by_name=True, skip_mismatch=True)
-        pretrained_model.load_weights("data/weights/darknet19.h5")
+        #pretrained_model.load_weights("data/weights/%s.h5" % config.pt_net, by_name=True, skip_mismatch=True)
+        pretrained_model.load_weights("data/weights/%s.h5" % config.pt_net)
 
         """
         darknet19_model = load_model("data/weights/darknet19.h5")

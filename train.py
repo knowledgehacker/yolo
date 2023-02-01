@@ -150,11 +150,11 @@ def train():
                     feed_dict[bounding_box_ph_dict[key]] = bounding_box_dict[key]
                 feed_dict[dropout_keep_prob_ph] = config.TRAIN_KEEP_PROB
 
-                _, train_loss = sess.run([train_op, loss_op], feed_dict=feed_dict)
+                _, loss = sess.run([train_op, loss_op], feed_dict=feed_dict)
 
                 # print train loss message
                 if step % config.STEPS_PER_CKPT == 0:
-                    print(current_time(), "step %d, train_loss: %.3f" % (step, train_loss))
+                    print(current_time(), "step %d, loss: %.3f" % (step, loss))
                     # saver.save(sess, config.CKPT_PATH, global_step=step)
 
                     """

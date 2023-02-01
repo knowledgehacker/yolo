@@ -20,13 +20,13 @@ DATA_DIR = '%s/data/%s' % (V1_DIR, DATASET)
 
 ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % DATA_DIR
 #ANNOTATION_TRAIN_DIR = '%s/tmp/Annotations' % DATA_DIR
-#ANNOTATION_TRAIN_DIR = '%s/data/VOC2012/train/Annotations' % V1_DIR
+ANNOTATION_TRAIN_DIR = '%s/data/VOC2012/train/Annotations' % V1_DIR
 #ANNOTATION_TEST_DIR = '%s/test/Annotations' % DATA_DIR
 ANNOTATION_TEST_DIR = '%s/tmp/Annotations' % DATA_DIR
 
 IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % DATA_DIR
 #IMAGE_TRAIN_DIR = '%s/tmp/JPEGImages' % DATA_DIR
-#IMAGE_TRAIN_DIR = '%s/data/VOC2012/train/JPEGImages' % V1_DIR
+IMAGE_TRAIN_DIR = '%s/data/VOC2012/train/JPEGImages' % V1_DIR
 #IMAGE_TEST_DIR = '%s/test/JPEGImages' % DATA_DIR
 IMAGE_TEST_DIR = '%s/tmp/JPEGImages' % DATA_DIR
 
@@ -69,6 +69,9 @@ if VERSION == "v1":
     # large batch, ex 200, does not work, I don't know why
     BATCH_SIZE = 64
     TEST_BATCH_SIZE = 1
+
+    # pretrain network
+    pt_net = "extraction"
 elif VERSION == "v2":
     IMG_H, IMG_W, IMG_CH = 416, 416, 3
 
@@ -89,6 +92,9 @@ elif VERSION == "v2":
     # large batch, ex 200, does not work, I don't know why
     BATCH_SIZE = 16
     TEST_BATCH_SIZE = 1
+
+    # pretrain network
+    pt_net = "darknet19"
 
     # box priors for voc2012, (w, h), based on not coordinates but grid
     # https://github.com/pjreddie/darknet/blob/master/cfg/yolov2-voc.cfg
@@ -118,8 +124,6 @@ NUM_EPOCH = 90
 
 #STEPS_PER_CKPT = 10
 STEPS_PER_CKPT = 1
-
-VALIDATE = False
 
 TRAIN_KEEP_PROB = 0.5
 TEST_KEEP_PROB = 1.0
