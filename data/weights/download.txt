@@ -1,0 +1,7 @@
+1. Extraction
+https://github.com/pjreddie/darknet/blob/master/cfg/extraction.cfg
+https://pjreddie.com/media/files/extraction.weights
+
+2. Darknet19
+https://github.com/pjreddie/darknet/blob/master/cfg/darknet19.cfg
+https://pjreddie.com/media/files/darknet19.weights

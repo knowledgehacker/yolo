@@ -3,8 +3,12 @@
 # before convert, pleas download .cfg and .weights from https://pjreddie.com/darknet/imagenet/,
 # and put .cfg file in "cfg" directory and .weights in "data/weights" directory
 
-NET=darknet19
 DIR=data/weights
 
+NET=darknet19
+# by default the model instead of weights are saved, to enbale load_weights, pass argument "--weights_only"
+python3 convert.py --weights_only --plot_model cfg/${NET}_-2.cfg ${DIR}/${NET}.weights ${DIR}/${NET}.h5
+
+NET=extraction
 # by default the model instead of weights are saved, to enbale load_weights, pass argument "--weights_only"
 python3 convert.py --weights_only --plot_model cfg/${NET}_-2.cfg ${DIR}/${NET}.weights ${DIR}/${NET}.h5
