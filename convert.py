@@ -1,9 +1,10 @@
 #! /usr/bin/env python
 """
-This code comes from: https://github.com/qqwweee/keras-yolo3/blob/master/convert.py
-I do the following changes:
+This code comes from: https://github.com/qqwweee/keras-yolo3/blob/master/convert.py,
+(originated from https://github.com/allanzelener/YAD2K/blob/master/yad2k.py?), I do the following changes:
 1) Support NCHW format to be able to train on gpu.
-2) Add name to layers.
+2) Use 'same' padding for all conv and pool layers.
+3) Add name to layers.
 
 Switch between cpu and gpu, remember to convert it again.
 """
@@ -22,7 +23,7 @@ from collections import defaultdict
 import numpy as np
 from keras import backend as K
 from keras.models import Model
-from keras.layers import Input, Conv2D, MaxPooling2D, BatchNormalization, LeakyReLU
+from keras.layers import Input, Conv2D, MaxPool2D, BatchNormalization, LeakyReLU
 from keras.regularizers import l2
 from keras.utils.vis_utils import plot_model as plot
 
@@ -95,17 +96,17 @@ def _main(args):
     cfg_parser.read_file(unique_config_file)
 
     print('Creating Keras model.')
+    # use specified input shape, by minglin
     #input_layer = Input(shape=(None, None, 3))
     input_layer = Input(input_shape, name="input_image")
     prev_layer = input_layer
     all_layers = []
 
-    weight_decay = float(cfg_parser['net_0']['decay']
-                         ) if 'net_0' in cfg_parser.sections() else 5e-4
+    weight_decay = float(cfg_parser['net_0']['decay']) if 'net_0' in cfg_parser.sections() else 5e-4
+
     count = 0
-    out_index = []
     for section in cfg_parser.sections():
-        #print('Parsing section {}'.format(section))
+        print('Parsing section {}'.format(section))
         if section.startswith('convolutional'):
             filters = int(cfg_parser[section]['filters'])
             size = int(cfg_parser[section]['size'])
@@ -119,15 +120,8 @@ def _main(args):
             padding = 'same' if pad == 1 else 'valid'
 
             # Setting weights.
-            # Darknet serializes convolutional weights as:
-            # [bias/beta, [gamma, mean, variance], conv_weights]
+            # Darknet serializes convolutional weights as: [bias/beta, [gamma, mean, variance], conv_weights]
             prev_layer_shape = K.int_shape(prev_layer)
-
-            channels = prev_layer_shape[-1]
-            if data_format == "channels_first":
-                channels = prev_layer_shape[1]
-            darknet_w_shape = (filters, channels, size, size)
-            weights_size = np.product(darknet_w_shape)
 
             conv_bias = np.ndarray(
                 shape=(filters, ),
@@ -149,20 +143,25 @@ def _main(args):
                     bn_weights[2]  # running var
                 ]
 
+            # handle both NHWC and NCHW formats, by minglin
+            channels = prev_layer_shape[-1]
+            if data_format == "channels_first":
+                channels = prev_layer_shape[1]
+            # DarkNet conv_weights are serialized Caffe-style: (out_dim, in_dim, height, width)
+            conv_weight_shape = (filters, channels, size, size)
+            weights_size = np.product(conv_weight_shape)
             conv_weights = np.ndarray(
-                shape=darknet_w_shape,
+                shape=conv_weight_shape,
                 dtype='float32',
                 buffer=weights_file.read(weights_size * 4))
             count += weights_size
 
-            # DarkNet conv_weights are serialized Caffe-style:
-            # (out_dim, in_dim, height, width)
-            # We would like to set these to Tensorflow order:
-            # (height, width, in_dim, out_dim)
+            # We would like to transform conv_weights to Tensorflow order: (height, width, in_dim, out_dim)
+            # whether data_format is either NHWC or NCHW, weights shape is (height, width, in_dim, out_dim), by minglin
             conv_weights = np.transpose(conv_weights, [2, 3, 1, 0])
             """
-            if data_format == "channels_first":
-                conv_weights = np.transpose(conv_weights, [2, 0, 1, 3])
+            if data_format != "channels_first":
+                conv_weights = np.transpose(conv_weights, [2, 3, 1, 0])
             """
 
             index = int(section.split('_')[1]) + 1
@@ -196,9 +195,10 @@ def _main(args):
                 activation=act_fn,
                 padding=padding,
                 data_format=data_format,
-                name="conv_%d" % index,
+                name="conv_%d" % index, # add name, by minglin
             ))(prev_layer)
 
+            # handle both NHWC and NCHW formats, and add name, by minglin
             if batch_normalize:
                 bn_axis = -1
                 if data_format == "channels_first":
@@ -216,11 +216,13 @@ def _main(args):
         elif section.startswith('maxpool'):
             size = int(cfg_parser[section]['size'])
             stride = int(cfg_parser[section]['stride'])
+
+            # add name, by minglin
             index = int(section.split('_')[1]) + 1
             in_channels = config.IMG_W / (2 ** (index-1))
             out_channels = in_channels / 2
             all_layers.append(
-                MaxPooling2D(
+                MaxPool2D(
                     pool_size=(size, size),
                     strides=(stride, stride),
                     padding='same',
@@ -236,8 +238,7 @@ def _main(args):
                 'Unsupported section header type: {}'.format(section))
 
     # Create and save model.
-    if len(out_index)==0: out_index.append(len(all_layers)-1)
-    model = Model(inputs=input_layer, outputs=[all_layers[i] for i in out_index])
+    model = Model(inputs=input_layer, outputs=all_layers[-1])
     #model.summary()
     if args.weights_only:
         model.save_weights('{}'.format(output_path))
