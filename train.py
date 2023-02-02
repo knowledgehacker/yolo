@@ -94,17 +94,18 @@ def train():
         run_metadata = tf.RunMetadata()
         """
 
-        tf.global_variables_initializer().run()
-
-        # load weights after initializing global variables to avoid pretrained weights being re-initialized
-        pretrained_model.load_weights("data/weights/%s.h5" % config.pt_net)
-
         # create saver
         saver = tf.train.Saver(tf.global_variables(), max_to_keep=1)
 
         ckpt_path = '%s/%s' % (config.CKPT_DIR, config.MODEL_NAME)
         trained_epoch = cal_trained_epoch(config.CKPT_DIR)
-        if trained_epoch != 0:
+        if trained_epoch == 0:
+            # initialize global variables
+            tf.global_variables_initializer().run()
+
+            # load pretrained weights after initializing global variables to avoid weights being re-initialized
+            pretrained_model.load_weights("data/weights/%s.h5" % config.pt_net)
+        else:
             print("resume from last epoch %d ..." % trained_epoch)
             # restore will re-initialize global variables with the saved ones
             saver.restore(sess, "%s-%d" % (ckpt_path, trained_epoch))
