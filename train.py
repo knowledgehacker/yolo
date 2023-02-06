@@ -62,8 +62,6 @@ def train():
         loss_op = model.opt(net_out_op, bounding_box_ph_dict["class_probs"], bounding_box_ph_dict["class_proids"],
                             bounding_box_ph_dict["object_proids"],
                             bounding_box_ph_dict["coords"])
-        optimizer = get_optimizer()
-        train_op = optimizer.minimize(loss_op)
 
     with tf.Session(graph=g, config=cfg) as sess:
         """
@@ -72,14 +70,15 @@ def train():
         run_metadata = tf.RunMetadata()
         """
 
-        tf.global_variables_initializer().run()
-
         # create saver
         saver = tf.train.Saver(tf.global_variables(), max_to_keep=1)
 
         ckpt_path = '%s/%s' % (config.CKPT_DIR, config.MODEL_NAME)
         trained_epoch = cal_trained_epoch(config.CKPT_DIR)
-        if trained_epoch != 0:
+        if trained_epoch == 0:
+            # initialize global variables
+            tf.global_variables_initializer().run()
+        else:
             print("resume from last epoch %d ..." % trained_epoch)
             # restore will re-initialize global variables with the saved ones
             saver.restore(sess, "%s-%d" % (ckpt_path, trained_epoch))
@@ -88,6 +87,14 @@ def train():
             epoch = i + 1
 
             print(current_time(), "epoch: %d" % epoch)
+
+            # learning rate scheduler
+            lr = tf.train.piecewise_constant_decay(epoch, config.BOUNDARIES, config.LRS)
+            optimizer = get_optimizer(lr)
+            train_op = optimizer.minimize(loss_op)
+
+            # initialize optimizer variables
+            tf.variables_initializer(optimizer.variables()).run()
 
             """
             with tf.device("/cpu:0"):

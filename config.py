@@ -80,15 +80,18 @@ STEPS_PER_CKPT = 1
 VALIDATE = False
 
 # large batch, ex 200, does not work, I don't know why
-BATCH_SIZE = 16
+BATCH_SIZE = 64
 TEST_BATCH_SIZE = 1
 #TEST_BATCH_SIZE = 300
 
 OPTIMIZER = 'rmsprop'
 
-LR = 1e-5
+#LR = 1e-5
 MOMENTUM = 0.9
 DECAY = 5e-4
+
+BOUNDARIES = [30, 60]
+LRS = [2.5e-5, 5e-6, 1e-6]
 
 TRAIN_KEEP_PROB = 0.5
 TEST_KEEP_PROB = 1.0
