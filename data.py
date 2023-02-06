@@ -24,6 +24,8 @@ def resize_input(im):
     h, w, c = config.IMG_H, config.IMG_W, config.IMG_CH
     imsz = cv2.resize(im, (w, h))
     imsz = imsz / 255.
+    # TODO: which of the following two operations is more efficient?
+    #imsz = cv2.cvtColor(imsz, cv2.COLOR_BGR2RGB)
     imsz = imsz[:, :, ::-1] # cv read in BGR, convert it to in RGB
 
     return imsz

@@ -84,17 +84,17 @@ elif VERSION == "v2":
     class_scale = 1.0
     coord_scale = 1.0
 
-    OPTIMIZER = 'rmsprop'
-    LR = 1e-6   # starts with 1e-5 gets nan after ~18 steps
+    OPTIMIZER = 'adam'
+    LR = 1e-5   # starts with 1e-5 gets nan after ~18 steps
     MOMENTUM = 0.9
     DECAY = 5e-4
 
     # large batch, ex 200, does not work, I don't know why
-    BATCH_SIZE = 16
+    BATCH_SIZE = 32
     TEST_BATCH_SIZE = 1
 
     # pretrain network
-    pt_net = "darknet19"
+    pt_net = "darknet19_448"
 
     # box priors for voc2012, (w, h), based on not coordinates but grid
     # https://github.com/pjreddie/darknet/blob/master/cfg/yolov2-voc.cfg
