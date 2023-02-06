@@ -84,8 +84,6 @@ def train():
         loss_op = model.opt(net_out_op, bounding_box_ph_dict["class_probs"], bounding_box_ph_dict["class_proids"],
                             bounding_box_ph_dict["object_proids"],
                             bounding_box_ph_dict["coords"])
-        optimizer = get_optimizer()
-        train_op = optimizer.minimize(loss_op)
 
     with tf.Session(graph=g, config=cfg) as sess:
         """
@@ -114,6 +112,14 @@ def train():
             epoch = i + 1
 
             print(current_time(), "epoch: %d" % epoch)
+
+            # learning rate scheduler
+            lr = tf.train.piecewise_constant_decay(epoch, config.BOUNDARIES, config.LRS)
+            optimizer = get_optimizer(lr)
+            train_op = optimizer.minimize(loss_op)
+
+            # initialize optimizer variables
+            tf.variables_initializer(optimizer.variables()).run()
 
             """
             with tf.device("/cpu:0"):

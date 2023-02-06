@@ -62,9 +62,12 @@ if VERSION == "v1":
     coord_scale = 5.0
 
     OPTIMIZER = 'rmsprop'
-    LR = 1e-5
+    #LR = 1e-5
     MOMENTUM = 0.9
     DECAY = 5e-4
+
+    BOUNDARIES = [30, 60]
+    LRS = [2.5e-5, 5e-6, 1e-6]
 
     # large batch, ex 200, does not work, I don't know why
     BATCH_SIZE = 32
@@ -85,9 +88,12 @@ elif VERSION == "v2":
     coord_scale = 1.0
 
     OPTIMIZER = 'adam'
-    LR = 1e-5   # starts with 1e-5 gets nan after ~18 steps
+    #LR = 1e-5   # starts with 1e-5 gets nan after ~18 steps
     MOMENTUM = 0.9
     DECAY = 5e-4
+
+    BOUNDARIES = [30, 60]
+    LRS = [1e-5, 2.5e-6, 0.5e-6]
 
     # large batch, ex 200, does not work, I don't know why
     BATCH_SIZE = 32

@@ -66,15 +66,15 @@ def save_model(sess, model_dir, model_name, outputs):
         fout.write(output_graph_def.SerializeToString())
 
 
-def get_optimizer():
+def get_optimizer(lr):
     if config.OPTIMIZER == 'momentum':
-        optimizer = tf.train.MomentumOptimizer(learning_rate=config.LR, momentum=config.MOMENTUM)
+        optimizer = tf.train.MomentumOptimizer(learning_rate=lr, momentum=config.MOMENTUM)
     elif config.OPTIMIZER == 'adagrad':
-        optimizer = tf.train.AdagradOptimizer(learning_rate=config.LR, initial_accumulator_value=1e-8)
+        optimizer = tf.train.AdagradOptimizer(learning_rate=lr, initial_accumulator_value=1e-8)
     elif config.OPTIMIZER == 'rmsprop':
-        optimizer = tf.train.RMSPropOptimizer(learning_rate=config.LR, decay=config.DECAY, momentum=config.MOMENTUM)
+        optimizer = tf.train.RMSPropOptimizer(learning_rate=lr, decay=config.DECAY, momentum=config.MOMENTUM)
     elif config.OPTIMIZER == 'adam':
-        optimizer = tf.train.AdamOptimizer(learning_rate=config.LR)
+        optimizer = tf.train.AdamOptimizer(learning_rate=lr)
     else:
         print("Unsupported optimizer: %s" % config.OPTIMIZER)
 
