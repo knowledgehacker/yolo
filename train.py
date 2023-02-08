@@ -46,8 +46,7 @@ def train():
 
     with tf.device("/cpu:0"):
         print(current_time(), "Parse starts ...")
-        #data = parse(config.ANNOTATION_TRAIN_DIR, config.CLASSES)
-        data = parse(config.CLASSES)
+        data = parse(config.ANNOTATION_TRAIN_DIR, config.CLASSES)
         print(current_time(), "Parse finished!")
 
     g = tf.Graph()
@@ -140,8 +139,7 @@ def train():
                 # get data
                 print(current_time(), "batch %d get data starts ..." % step)
                 chunks = [data[idx] for idx in shuffle_idx[b * batch_size: (b + 1) * batch_size]]
-                #images, bounding_box_dict = batch(config.IMAGE_TRAIN_DIR, chunks)
-                images, bounding_box_dict = batch(chunks)
+                images, bounding_box_dict = batch(config.IMAGE_TRAIN_DIR, chunks)
                 if images is None:
                     print(current_time(), "batch %d skipped!" % step)
                     continue

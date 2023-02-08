@@ -12,10 +12,6 @@ CKPT_DIR = 'ckpt/%s' % VERSION
 PROF_DIR = "prof"
 
 
-#years = [2007, 2008, 2009, 2010, 2011, 2012]
-years = [1970]
-"""
-
 DATASET = 'VOC2007'
 
 #DATA_DIR = 'data/%s' % DATASET
@@ -25,16 +21,16 @@ DATA_DIR = '%s/data/%s' % (V1_DIR, DATASET)
 
 ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % DATA_DIR
 #ANNOTATION_TRAIN_DIR = '%s/tmp/Annotations' % DATA_DIR
-ANNOTATION_TRAIN_DIR = '%s/data/VOC2012/train/Annotations' % V1_DIR
+ANNOTATION_TRAIN_DIR = '/content/data/VOC2012/train/Annotations'
 #ANNOTATION_TEST_DIR = '%s/test/Annotations' % DATA_DIR
 ANNOTATION_TEST_DIR = '%s/tmp/Annotations' % DATA_DIR
 
 IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % DATA_DIR
 #IMAGE_TRAIN_DIR = '%s/tmp/JPEGImages' % DATA_DIR
-IMAGE_TRAIN_DIR = '%s/data/VOC2012/train/JPEGImages' % V1_DIR
+IMAGE_TRAIN_DIR = '/content/data/VOC2012/train/JPEGImages'
 #IMAGE_TEST_DIR = '%s/test/JPEGImages' % DATA_DIR
 IMAGE_TEST_DIR = '%s/tmp/JPEGImages' % DATA_DIR
-"""
+
 
 IMAGE_OUT_DIR = "out/%s" % VERSION
 

@@ -58,8 +58,7 @@ B = config.B
 C, labels = config.C, config.CLASSES
 
 
-#def batch(image_dir, chunks, test=False):
-def batch(chunks, test=False):
+def batch(image_dir, chunks, test=False):
     image_batch = []
 
     probs_batch = []
@@ -69,12 +68,10 @@ def batch(chunks, test=False):
 
     for chunk in chunks:
         # preprocess
-        #jpg = chunk[0]
-        (year, jpg) = chunk[0]
+        jpg = chunk[0]
         w, h, allobj_ = chunk[1]
         allobj = deepcopy(allobj_)
-        #path = os.path.join(image_dir, jpg)
-        path = os.path.join("data/VOC%d/train/JPEGImages" % year, jpg)
+        path = os.path.join(image_dir, jpg)
         if not os.path.exists(path):
             print("Warning - image %s doesn't exists." % path)
             return None, None
