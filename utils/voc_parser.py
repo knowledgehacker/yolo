@@ -8,23 +8,38 @@ import sys
 import xml.etree.ElementTree as ET
 import glob
 
+import config
+
 
 def _pp(l): # pretty printing 
     for i in l: print('{}: {}'.format(i,l[i]))
 
 
-def parse(ann_dir, classes, exclusive=False):
-    print('Parsing for {} {}'.format(
-            classes, 'exclusively' * int(exclusive)))
+def parse(classes, exclusive=False):
+    anns = []
+    for year in config.years:
+        ann_dir = "data/VOC%d/train/Annotations" % year
+        year_anns = parse_year(year, ann_dir, classes, exclusive)
+        anns += year_anns
+
+    gather_stats(anns, classes)
+
+    return anns
+
+
+def parse_year(year, ann_dir, classes, exclusive=False):
+#def parse(ann_dir, classes, exclusive=False):
+    print('Parsing {} for {} {}'.format(year, classes, 'exclusively' * int(exclusive)))
+    #print('Parsing for {} {}'.format(classes, 'exclusively' * int(exclusive)))
 
     dumps = list()
     cur_dir = os.getcwd()
     os.chdir(ann_dir)
-    annotations = os.listdir('.')
-    annotations = glob.glob(str(annotations)+'*.xml')
-    size = len(annotations)
+    anns = os.listdir('.')
+    anns = glob.glob(str(anns)+'*.xml')
+    size = len(anns)
 
-    for i, file in enumerate(annotations):
+    for i, file in enumerate(anns):
         # progress bar      
         sys.stdout.write('\r')
         percentage = 1. * (i+1) / size
@@ -58,11 +73,20 @@ def parse(ann_dir, classes, exclusive=False):
                 current = [name, xn, yn, xx, yx]
                 all += [current]
 
-        add = [[jpg, [w, h, all]]]
+        #add = [[jpg, [w, h, all]]]
+        add = [[(year, jpg), [w, h, all]]]
         dumps += add
         in_file.close()
 
     # gather all stats
+    #gather_stats(dumps, classes)
+    sys.stdout.write('\n')
+
+    os.chdir(cur_dir)
+    return dumps
+
+
+def gather_stats(dumps, classes):
     stat = dict()
     for dump in dumps:
         all = dump[1][2]
@@ -73,9 +97,6 @@ def parse(ann_dir, classes, exclusive=False):
                 else:
                     stat[current[0]] = 1
 
-    print('\nStatistics:')
+    print('Statistics:')
     _pp(stat)
     print('Dataset size: {}'.format(len(dumps)))
-
-    os.chdir(cur_dir)
-    return dumps

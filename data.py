@@ -9,7 +9,7 @@ import os
 
 import config
 from utils.misc import current_time
-from utils.im_transform import imcv2_affine_trans, imcv2_recolor
+from utils.im_transform import imcv2_affine_trans
 
 
 def _fix(obj, dims, scale, offs):
@@ -24,8 +24,6 @@ def resize_input(im):
     h, w, c = config.IMG_H, config.IMG_W, config.IMG_CH
     imsz = cv2.resize(im, (w, h))
     imsz = imsz / 255.
-    # TODO: which of the following two operations is more efficient?
-    #imsz = cv2.cvtColor(imsz, cv2.COLOR_BGR2RGB)
     imsz = imsz[:, :, ::-1] # cv read in BGR, convert it to in RGB
 
     return imsz
@@ -50,7 +48,7 @@ def data_augment(im, allobj=None):
             obj[1] = dims[0] - obj[3]
             obj[3] = dims[0] - obj_1_
         # TODO: distort with linear instead of exponential
-        im = imcv2_recolor(im)
+        #im = imcv2_recolor(im)
 
     return im
 
@@ -60,8 +58,8 @@ B = config.B
 C, labels = config.C, config.CLASSES
 
 
-def batch(image_dir, chunks, test=False):
-# def _batch(image_dir, chunks):
+#def batch(image_dir, chunks, test=False):
+def batch(chunks, test=False):
     image_batch = []
 
     probs_batch = []
@@ -71,10 +69,12 @@ def batch(image_dir, chunks, test=False):
 
     for chunk in chunks:
         # preprocess
-        jpg = chunk[0]
+        #jpg = chunk[0]
+        (year, jpg) = chunk[0]
         w, h, allobj_ = chunk[1]
         allobj = deepcopy(allobj_)
-        path = os.path.join(image_dir, jpg)
+        #path = os.path.join(image_dir, jpg)
+        path = os.path.join("data/VOC%d/train/JPEGImages" % year, jpg)
         if not os.path.exists(path):
             print("Warning - image %s doesn't exists." % path)
             return None, None
