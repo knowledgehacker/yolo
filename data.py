@@ -9,7 +9,7 @@ import os
 
 import config
 from utils.misc import current_time
-from utils.im_transform import imcv2_affine_trans
+from utils.im_transform import imcv2_affine_trans#, imcv2_recolor
 
 
 def _fix(obj, dims, scale, offs):
@@ -47,7 +47,6 @@ def data_augment(im, allobj=None):
             obj_1_ = obj[1]
             obj[1] = dims[0] - obj[3]
             obj[3] = dims[0] - obj_1_
-        # TODO: distort with linear instead of exponential
         #im = imcv2_recolor(im)
 
     return im
@@ -114,8 +113,13 @@ def batch(image_dir, chunks, test=False):
             obj[4] = math.sqrt(obj[4])
             grid_cx = int(cx)
             grid_cy = int(cy)
+
             obj[1] = cx - grid_cx
             obj[2] = cy - grid_cy
+            """
+            obj[1] = cx
+            obj[2] = cy
+            """
 
             grid_cell = grid_cy * W + grid_cx
 

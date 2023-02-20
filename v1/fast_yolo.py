@@ -2,7 +2,7 @@
 
 import config
 from v1.small import Small
-from utils.iou import find_best_box
+from utils.iou import find_best_box_v1
 
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()
@@ -68,10 +68,11 @@ class FastYolo(object):
         filter out predictions P(class) < config.THRESHOLD, then get the final bounding box for each remaining predictions in NMS by IOU.
         """
         nd_coords_predict = tf.reshape(net_out[:, H*W * (C + B):], shape=[-1, H*W, B, 4])
-        best_box = find_best_box(nd_coords_predict, nd_coords)
-        nd_confids = best_box * nd_object_proids
+        best_box = find_best_box_v1(nd_coords_predict, nd_coords)
+        nd_confids = tf.to_float(best_box) * nd_object_proids
 
-        nd_confid_weight = noobj_scale * (1.0 - nd_confids) + obj_scale * nd_confids
+        nd_confid_weight = obj_scale * nd_confids + noobj_scale * (1.0 - nd_confids)
+        #nd_confid_weight = obj_scale * nd_confids + noobj_scale * (1.0 - nd_object_proids)
 
         """
         coordinate weight, we need to multiply nd_confids here,
