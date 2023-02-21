@@ -12,24 +12,20 @@ CKPT_DIR = 'ckpt/%s' % VERSION
 PROF_DIR = "prof"
 
 
-DATASET = 'VOC2007'
+DATASET = 'VOC2012'
 
-#DATA_DIR = 'data/%s' % DATASET
-V1_DIR = "../yolo_v1"
-DATA_DIR = '%s/data/%s' % (V1_DIR, DATASET)
+DATA_DIR = 'data/%s' % DATASET
 
-
-ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % DATA_DIR
+#ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % DATA_DIR
 #ANNOTATION_TRAIN_DIR = '%s/tmp/Annotations' % DATA_DIR
 ANNOTATION_TRAIN_DIR = '/content/data/VOC2012/train/Annotations'
-#ANNOTATION_TEST_DIR = '%s/test/Annotations' % DATA_DIR
-ANNOTATION_TEST_DIR = '%s/tmp/Annotations' % DATA_DIR
 
-IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % DATA_DIR
+#IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % DATA_DIR
 #IMAGE_TRAIN_DIR = '%s/tmp/JPEGImages' % DATA_DIR
 IMAGE_TRAIN_DIR = '/content/data/VOC2012/train/JPEGImages'
-#IMAGE_TEST_DIR = '%s/test/JPEGImages' % DATA_DIR
-IMAGE_TEST_DIR = '%s/tmp/JPEGImages' % DATA_DIR
+
+ANNOTATION_TEST_DIR = 'data/tmp/Annotations'
+IMAGE_TEST_DIR = 'data/tmp/JPEGImages'
 
 
 IMAGE_OUT_DIR = "out/%s" % VERSION
@@ -59,20 +55,20 @@ if VERSION == "v1":
 
     # term scale in loss formula
     object_scale = 1.0
+    #object_scale = 2.0
     noobject_scale = 0.5
     class_scale = 1.0
     coord_scale = 5.0
 
-    OPTIMIZER = 'rmsprop'
+    OPTIMIZER = 'adam'
     #LR = 1e-5
     MOMENTUM = 0.9
     DECAY = 5e-4
 
-    BOUNDARIES = [30, 60]
-    LRS = [2.5e-5, 5e-6, 1e-6]
+    BOUNDARIES = [0, 30, 60]
+    LRS = [1e-5, 2.5e-6, 0.5e-6]
+    BATCH_SIZES = [16, 32, 48]
 
-    # large batch, ex 200, does not work, I don't know why
-    BATCH_SIZE = 32
     TEST_BATCH_SIZE = 1
 
     # pretrain network
@@ -94,11 +90,10 @@ elif VERSION == "v2":
     MOMENTUM = 0.9
     DECAY = 5e-4
 
-    BOUNDARIES = [30, 60]
+    BOUNDARIES = [0, 30, 60]
     LRS = [1e-5, 2.5e-6, 0.5e-6]
+    BATCH_SIZES = [16, 32, 48]
 
-    # large batch, ex 200, does not work, I don't know why
-    BATCH_SIZE = 32
     TEST_BATCH_SIZE = 1
 
     # pretrain network

@@ -79,3 +79,17 @@ def get_optimizer(lr):
         print("Unsupported optimizer: %s" % config.OPTIMIZER)
 
     return optimizer
+
+
+def get_boundary(epoch, boundaries):
+    idx = -1
+
+    boundary_num = len(boundaries)
+    for i in range(1, boundary_num):
+        if epoch < boundaries[i]:
+            idx = i - 1
+            break
+    if idx == -1:
+        idx = boundary_num - 1
+
+    return idx

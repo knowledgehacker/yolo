@@ -22,7 +22,7 @@ else:
     exit(-1)
 #from data import shuffle
 from data import get_batch_num, batch
-from utils.misc import current_time, get_optimizer, save_model
+from utils.misc import current_time, get_boundary, get_optimizer, save_model
 
 """
 import tensorflow as tf
@@ -97,7 +97,7 @@ def train():
 
         ckpt_path = '%s/%s' % (config.CKPT_DIR, config.MODEL_NAME)
         trained_epoch = cal_trained_epoch(config.CKPT_DIR)
-        if trained_epoch == 0:
+        if trained_epoch == -1:
             # initialize global variables
             tf.global_variables_initializer().run()
 
@@ -108,18 +108,26 @@ def train():
             # restore will re-initialize global variables with the saved ones
             saver.restore(sess, "%s-%d" % (ckpt_path, trained_epoch))
 
-        for i in range(trained_epoch, config.NUM_EPOCH):
-            epoch = i + 1
+        # when start from scratch or resume from the last epoch, or pass a boundary, create a new optimizer
+        prev_lr = -1.0
 
-            print(current_time(), "epoch: %d" % epoch)
+        epoch = trained_epoch + 1
+        for i in range(epoch, config.NUM_EPOCH):
+            print(current_time(), "epoch: %d" % i)
 
             # learning rate scheduler
-            lr = tf.train.piecewise_constant_decay(epoch, config.BOUNDARIES, config.LRS)
-            optimizer = get_optimizer(lr)
-            train_op = optimizer.minimize(loss_op)
+            boundary_idx = get_boundary(i, config.BOUNDARIES)
+            lr = config.LRS[boundary_idx]
+            print("lr: %.7f" % lr)
+            if lr != prev_lr:
+                print("lr: %.7f, prev_lr: %.7f" % (lr, prev_lr))
+                prev_lr = lr
 
-            # initialize optimizer variables
-            tf.variables_initializer(optimizer.variables()).run()
+                optimizer = get_optimizer(lr)
+                train_op = optimizer.minimize(loss_op)
+
+                # initialize optimizer variables
+                tf.variables_initializer(optimizer.variables()).run()
 
             """
             with tf.device("/cpu:0"):
@@ -130,9 +138,9 @@ def train():
 
             shuffle_idx = perm(len(data))
 
-            batch_size = config.BATCH_SIZE
+            batch_size = config.BATCH_SIZES[boundary_idx]
             batch_num = get_batch_num(data, batch_size)
-            print("batch_num: %d" % batch_num)
+            print("batch_size: %d, batch_num: %d" % (batch_size, batch_num))
             for b in range(batch_num):
                 step = b + 1
 
@@ -174,7 +182,7 @@ def train():
                     """
 
             # checkpoint upon each epoch instead of some step during an epoch, for convenient restore
-            saver.save(sess, ckpt_path, global_step=epoch)
+            saver.save(sess, ckpt_path, global_step=i)
 
             # save model each epoch
             outputs = ["net_out", "loss"]
@@ -184,7 +192,7 @@ def train():
 
 
 def cal_trained_epoch(ckpt_dir):
-    trained_epoch = 0
+    trained_epoch = -1
     ckpt_file = os.path.join(ckpt_dir, "checkpoint")
     if os.path.exists(ckpt_file):
         print("load from checkpoint %s" % ckpt_file)
