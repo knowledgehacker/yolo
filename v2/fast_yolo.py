@@ -4,7 +4,7 @@ import numpy as np
 
 import config
 from v2.small import Small
-from utils.iou import find_best_box_v2
+from utils.iou import find_best_box_v1
 
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()
@@ -85,7 +85,7 @@ class FastYolo(object):
         """
         confidence weight, nd_confids get the bounding box that has the highest iou.
         """
-        best_box = find_best_box_v2(adjusted_nd_coords_predict, nd_coords)
+        best_box = find_best_box_v1(adjusted_nd_coords_predict, nd_coords)
         nd_confids = tf.to_float(best_box) * nd_object_proids
 
         nd_confid_weight = noobj_scale * (1.0 - nd_confids) + obj_scale * nd_confids
