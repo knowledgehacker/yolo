@@ -67,6 +67,7 @@ def parse(ann_dir, classes, exclusive=False):
     gather_stats(dumps, classes)
 
     os.chdir(cur_dir)
+
     return dumps
 
 

@@ -138,8 +138,7 @@ def train():
 
             shuffle_idx = perm(len(data))
 
-            batch_size = config.BATCH_SIZES[boundary_idx]
-            batch_num = get_batch_num(data, batch_size)
+            batch_size, batch_num = get_batch_num(data, config.BATCH_SIZES[boundary_idx])
             print("batch_size: %d, batch_num: %d" % (batch_size, batch_num))
             for b in range(batch_num):
                 step = b + 1

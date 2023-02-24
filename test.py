@@ -5,7 +5,7 @@ import numpy as np
 import config
 from utils.voc_parser import parse
 from data import get_batch_num, batch
-from predict import postprocess
+from predict import postprocess, draw_detection_on_image, save_detection_as_json
 from utils.misc import current_time, with_prefix, load_model
 
 """
@@ -53,9 +53,8 @@ def test():
         net_out_op = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "net_out:0"))
         loss_op = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "loss:0"))
 
-        batch_size = config.TEST_BATCH_SIZE
-        batch_num = get_batch_num(data, batch_size)
-        print("batch_num: %d" % batch_num)
+        batch_size, batch_num = get_batch_num(data, config.TEST_BATCH_SIZE)
+        print("batch_size: %d, batch_num: %d" % (batch_size, batch_num))
         for b in range(batch_num):
             step = b + 1
 
@@ -78,12 +77,19 @@ def test():
             feed_dict[dropout_keep_prob_ph] = config.TEST_KEEP_PROB
 
             net_outs, loss = sess.run([net_out_op, loss_op], feed_dict=feed_dict)
-            print("--- net_outs.shape")
-            print(net_outs.shape)
+            #print("--- net_outs.shape")
+            #print(net_outs.shape)
 
             # predict
+            """
             image_fnames = [chunk[0] for chunk in chunks]
             predict(config.IMAGE_TEST_DIR, image_fnames, net_outs)
+            """
+            for chunk, net_out in zip(chunks, net_outs):
+                image_file = "%s/%s" % (config.IMAGE_TEST_DIR, chunk[0])
+                # !!!Important, we can not exchange the call below, since draw_detection_on_image changes the raw images
+                save_detection_as_json(image_file, net_out)
+                #draw_detection_on_image(image_file, net_out)
 
             # print loss message
             print(current_time(), "step %d, loss: %.3f" % (step, loss))
@@ -92,20 +98,12 @@ def test():
 
 
 """
-def load_ckpt_model(sess, ckpt_dir):
-    ckpt_file = tf.train.latest_checkpoint(ckpt_dir)
-    print("ckpt_file: %s" % ckpt_file)
-    saver = tf.train.import_meta_graph("{}.meta".format(ckpt_file))
-    saver.restore(sess, ckpt_file)
-"""
-
-
 def predict(image_dir, image_fnames, net_outs):
     for (image_fname, net_out) in zip(image_fnames, net_outs):
         image_file = "%s/%s" % (image_dir, image_fname)
         #print("image_file: %s" % image_file)
-        postprocess(image_file, net_out)
-
+        draw_detection_on_image(image_file, net_out)
+"""
 
 if __name__ == "__main__":
     test()

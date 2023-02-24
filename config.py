@@ -1,7 +1,7 @@
 MODEL_NAME = 'fast_yolo'
 
-#VERSION = "v1"
-VERSION = "v2"
+VERSION = "v1"
+#VERSION = "v2"
 
 DEVICE_TYPE = "gpu"
 
@@ -11,24 +11,27 @@ CKPT_DIR = 'ckpt/%s' % VERSION
 
 PROF_DIR = "prof"
 
+DATA_DIR = 'data'
 
-DATASET = 'VOC2012'
+VOC2007_DIR = '%s/%s' % (DATA_DIR, 'VOC2007')
+VOC2012_2007_DIR = '%s/%s' % (DATA_DIR, 'VOC2012')
 
-DATA_DIR = 'data/%s' % DATASET
+ANNOTATION_TRAIN_DIR = '/content/%s/train/Annotations' % VOC2012_2007_DIR
+IMAGE_TRAIN_DIR = '/content/%s/train/JPEGImages' % VOC2012_2007_DIR
 
-#ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % DATA_DIR
-#ANNOTATION_TRAIN_DIR = '%s/tmp/Annotations' % DATA_DIR
-ANNOTATION_TRAIN_DIR = '/content/data/VOC2012/train/Annotations'
+#ANNOTATION_TEST_DIR = 'data/tmp/Annotations'
+#IMAGE_TEST_DIR = 'data/tmp/JPEGImages'
 
-#IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % DATA_DIR
-#IMAGE_TRAIN_DIR = '%s/tmp/JPEGImages' % DATA_DIR
-IMAGE_TRAIN_DIR = '/content/data/VOC2012/train/JPEGImages'
+ANNOTATION_TEST_DIR = '%s/test/Annotations' % VOC2007_DIR
+IMAGE_TEST_DIR = '%s/test/JPEGImages' % VOC2007_DIR
 
-ANNOTATION_TEST_DIR = 'data/tmp/Annotations'
-IMAGE_TEST_DIR = 'data/tmp/JPEGImages'
+#ANNOTATION_TEST_DIR = '/content/%s/test/Annotations' % VOC2007_DIR
+#IMAGE_TEST_DIR = '/content/%s/test/JPEGImages' % VOC2007_DIR
 
 
-IMAGE_OUT_DIR = "out/%s" % VERSION
+OUT_DIR = "out/%s" % VERSION
+IMAGE_OUT_DIR = "%s/Image" % OUT_DIR
+JSON_OUT_DIR = "%s/Json" % OUT_DIR
 
 JSON = False
 
@@ -69,7 +72,7 @@ if VERSION == "v1":
     LRS = [1e-5, 2.5e-6, 0.5e-6]
     BATCH_SIZES = [16, 32, 48]
 
-    TEST_BATCH_SIZE = 1
+    TEST_BATCH_SIZE = 64
 
     # pretrain network
     pt_net = "extraction"

@@ -163,7 +163,7 @@ def get_batch_num(data, batch_size):
         batch_size = size
     batch_num = int(size / batch_size)
 
-    return batch_num
+    return batch_size, batch_num
 
 """
 def shuffle(image_dir, data):
