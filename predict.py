@@ -7,13 +7,7 @@ import json
 import cv2
 
 import config
-if config.VERSION == "v1":
-	from cython_utils.cy_yolo_findboxes import yolo_box_constructor
-elif config.VERSION == "v2":
-	from ...cython_utils.cy_yolo2_findboxes import box_constructor
-else:
-	print("Unsupported version: %s" % config.VERSION)
-	exit(-1)
+from cython_utils.cy_yolo2_findboxes import box_constructor
 
 
 def process_box(b, h, w, threshold):
@@ -34,21 +28,8 @@ def process_box(b, h, w, threshold):
 	return None
 
 
-# v1
-def findboxes_v1(net_out, w, h):
-	meta = {
-		"classes": config.C,
-		"num": config.B,
-		"side": config.H
-	}
-	threshold = config.THRESHOLD
-	boxes = yolo_box_constructor(meta, net_out, w, h, threshold)
-
-	return boxes
-
-
-# v2
-def findboxes_v2(net_out):
+# net
+def find_boxes(net_out):
 	meta = {
 		"anchors": config.anchors,
 
@@ -66,13 +47,7 @@ def get_image_boxes(image_file, net_out):
 	image = cv2.imread(image_file)
 	h, w, _ = image.shape
 
-	if config.VERSION == "v1":
-		boxes = findboxes_v1(net_out, w, h)
-	elif config.VERSION == "v2":
-		boxes = findboxes_v2(net_out)
-	else:
-		print("Unsupported version: %s" % config.VERSION)
-		exit(-1)
+	boxes = find_boxes(net_out)
 
 	return image, h, w, boxes
 
@@ -115,9 +90,6 @@ def save_detection_as_json(image_file, net_out):
 		left, right, top, bot, mess, max_indx, confidence = boxResults
 		resultsForJSON.append({"label": mess, "confidence": float('%.2f' % confidence), "topleft": {"x": left, "y": top}, "bottomright": {"x": right, "y": bot}})
 
-	#print("--- resultsForJSON")
-	#print(resultsForJSON)
-
 	image_file_name = os.path.basename(image_file)
 	textJSON = json.dumps(resultsForJSON)
 	textFile = os.path.join(config.JSON_OUT_DIR, os.path.splitext(image_file_name)[0] + ".json")
@@ -132,13 +104,7 @@ def postprocess(image_file, net_out, save=True):
 	image = cv2.imread(image_file)
 	h, w, _ = image.shape
 
-	if config.VERSION == "v1":
-		boxes = findboxes_v1(net_out, w, h)
-	elif config.VERSION == "v2":
-		boxes = findboxes_v2(net_out)
-	else:
-		print("Unsupported version: %s" % config.VERSION)
-		exit(-1)
+	boxes = findboxes(net_out)
 
 	resultsForJSON = []
 	for b in boxes:

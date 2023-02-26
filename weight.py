@@ -8,8 +8,7 @@ import numpy as np
 import h5py
 
 import config
-from v1.extraction import Extraction
-from v2.darknet19 import DarkNet19
+from net.darknet19 import DarkNet19
 
 from keras.models import Model
 from keras.layers import Input
@@ -42,13 +41,8 @@ but we should call load_weights after tf.global_variables_initializer().run() av
 """
 def verify():
     input_image = Input(shape=config.input_shape, name="input_image")
-    if config.VERSION == 'v1':
-        net = Extraction()
-        model_weight_file = "data/weights/extraction.h5"
-    elif config.VERSION == 'v2':
-        net = DarkNet19()
-        model_weight_file = "data/weights/darknet19.h5"
-
+    net = DarkNet19()
+    model_weight_file = "data/weights/darknet19.h5"
 
     wf = h5py.File(model_weight_file)
     for key in wf.keys():

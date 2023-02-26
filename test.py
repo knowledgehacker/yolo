@@ -43,11 +43,12 @@ def test():
         image_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "image_ph:0"))
         bounding_box_ph_dict = {
             "class_probs": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "class_probs_ph:0")),
-            "class_proids": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "class_proids_ph:0")),
-            "object_proids": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "object_proids_ph:0")),
-            "coords": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "coords_ph:0"))
+            #"class_mask": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "class_mask_ph:0")),
+            "conf": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "conf_ph:0")),
+            "coords": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "coords_ph:0")),
+            "box_mask": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "box_mask_ph:0"))
         }
-        dropout_keep_prob_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "dropout_keep_prob_ph:0"))
+        #dropout_keep_prob_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "dropout_keep_prob_ph:0"))
 
         # get net_out and loss
         net_out_op = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "net_out:0"))
@@ -69,27 +70,30 @@ def test():
             if config.DEVICE_TYPE == "gpu":
                 images = np.transpose(images, [0, 3, 1, 2])
 
-            # train data
+            # forward
+            #print(current_time(), "batch %d forward starts ..." % step)
             feed_dict = dict()
             feed_dict[image_ph] = images
             for key in bounding_box_ph_dict:
                 feed_dict[bounding_box_ph_dict[key]] = bounding_box_dict[key]
-            feed_dict[dropout_keep_prob_ph] = config.TEST_KEEP_PROB
+            #feed_dict[dropout_keep_prob_ph] = config.TEST_KEEP_PROB
 
             net_outs, loss = sess.run([net_out_op, loss_op], feed_dict=feed_dict)
             #print("--- net_outs.shape")
             #print(net_outs.shape)
 
             # predict
+            print(current_time(), "batch %d predict starts ..." % step)
             """
             image_fnames = [chunk[0] for chunk in chunks]
             predict(config.IMAGE_TEST_DIR, image_fnames, net_outs)
             """
-            for chunk, net_out in zip(chunks, net_outs):
-                image_file = "%s/%s" % (config.IMAGE_TEST_DIR, chunk[0])
-                # !!!Important, we can not exchange the call below, since draw_detection_on_image changes the raw images
-                save_detection_as_json(image_file, net_out)
-                #draw_detection_on_image(image_file, net_out)
+            with tf.device("/cpu:0"):
+                for chunk, net_out in zip(chunks, net_outs):
+                    image_file = "%s/%s" % (config.IMAGE_TEST_DIR, chunk[0])
+                    # !!!Important, we can not exchange the call below, since draw_detection_on_image changes the raw images
+                    #save_detection_as_json(image_file, net_out)
+                    draw_detection_on_image(image_file, net_out)
 
             # print loss message
             print(current_time(), "step %d, loss: %.3f" % (step, loss))

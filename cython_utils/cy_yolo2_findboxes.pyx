@@ -3,7 +3,7 @@ cimport numpy as np
 cimport cython
 ctypedef np.float_t DTYPE_t
 from libc.math cimport exp
-from ..utils.box import BoundBox
+from box import BoundBox
 from nms cimport NMS
 
 #expit
@@ -52,20 +52,20 @@ cdef void _softmax_c(float* x, int classes):
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 def box_constructor(meta,np.ndarray[float,ndim=3] net_out_in, float threshold):
     cdef:
-        np.intp_t H, W, _, C, B, row, col, box_loop, class_loop
+        np.intp_t H, W, BxCCC, C, B, row, col, box_loop, class_loop
         np.intp_t row1, col1, box_loop1,index,index2
         float tempc,arr_max=0,sum=0
         double[:] anchors = np.asarray(meta['anchors'])
         list boxes = list()
 
-    H, W, _ = meta['out_size']
+    H, W, BxCCC = meta['out_size']
     C = meta['classes']
     B = meta['num']
     
     cdef:
-        float[:, :, :, ::1] net_out = net_out_in.reshape([H, W, B, net_out_in.shape[2]/B])
-        float[:, :, :, ::1] Classes = net_out[:, :, :, 5:]
-        float[:, :, :, ::1] Bbox_pred =  net_out[:, :, :, :5]
+        float[:, :, :, ::1] net_out = net_out_in.reshape([H, W, B, BxCCC/B])
+        float[:, :, :, ::1] Classes = net_out[:, :, :, :C]
+        float[:, :, :, ::1] Bbox_pred =  net_out[:, :, :, C:]
         float[:, :, :, ::1] probs = np.zeros((H, W, B, C), dtype=np.float32)
     
     for row in range(H):
@@ -73,11 +73,11 @@ def box_constructor(meta,np.ndarray[float,ndim=3] net_out_in, float threshold):
             for box_loop in range(B):
                 arr_max=0
                 sum=0;
-                Bbox_pred[row, col, box_loop, 4] = expit_c(Bbox_pred[row, col, box_loop, 4])
-                Bbox_pred[row, col, box_loop, 0] = (col + expit_c(Bbox_pred[row, col, box_loop, 0])) / W
-                Bbox_pred[row, col, box_loop, 1] = (row + expit_c(Bbox_pred[row, col, box_loop, 1])) / H
-                Bbox_pred[row, col, box_loop, 2] = exp(Bbox_pred[row, col, box_loop, 2]) * anchors[2 * box_loop + 0] / W
-                Bbox_pred[row, col, box_loop, 3] = exp(Bbox_pred[row, col, box_loop, 3]) * anchors[2 * box_loop + 1] / H
+                Bbox_pred[row, col, box_loop, 0] = expit_c(Bbox_pred[row, col, box_loop, 0])
+                Bbox_pred[row, col, box_loop, 1] = (col + expit_c(Bbox_pred[row, col, box_loop, 1])) / W
+                Bbox_pred[row, col, box_loop, 2] = (row + expit_c(Bbox_pred[row, col, box_loop, 2])) / H
+                Bbox_pred[row, col, box_loop, 3] = exp(Bbox_pred[row, col, box_loop, 3]) * anchors[2 * box_loop + 0] / W
+                Bbox_pred[row, col, box_loop, 4] = exp(Bbox_pred[row, col, box_loop, 4]) * anchors[2 * box_loop + 1] / H
                 #SOFTMAX BLOCK, no more pointer juggling
                 for class_loop in range(C):
                     arr_max=max_c(arr_max,Classes[row,col,box_loop,class_loop])
@@ -87,7 +87,7 @@ def box_constructor(meta,np.ndarray[float,ndim=3] net_out_in, float threshold):
                     sum+=Classes[row,col,box_loop,class_loop]
                 
                 for class_loop in range(C):
-                    tempc = Classes[row, col, box_loop, class_loop] * Bbox_pred[row, col, box_loop, 4]/sum                    
+                    tempc = Classes[row, col, box_loop, class_loop] * Bbox_pred[row, col, box_loop, 0]/sum
                     if(tempc > threshold):
                         probs[row, col, box_loop, class_loop] = tempc
     

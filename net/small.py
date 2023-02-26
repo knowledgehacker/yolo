@@ -2,7 +2,7 @@
 
 import config
 from utils.compose import ConvBatchLReLu, ConvBatchLReLu_loop, Conv
-from v2.darknet19 import DarkNet19
+from net.darknet19 import DarkNet19
 
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()

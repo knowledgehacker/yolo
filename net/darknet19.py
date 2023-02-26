@@ -12,7 +12,7 @@ C = config.C
 
 
 """
-DarNet for yolo v2 are as follows.
+DarNet for yolo net are as follows.
 Note that the 1st link takes pooling layer into account(index starts with 0), thus the 1st and 2nd links are equivalent.
 https://github.com/AlexeyAB/darknet/issues/279#issuecomment-397248821
 https://ethereon.github.io/netscope/#/gist/d08a41711e48cf111e330827b1279c31
