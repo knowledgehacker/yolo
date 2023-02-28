@@ -123,8 +123,8 @@ def batch(image_dir, chunks, test=False):
             if best_iou > 0:
                 # normalize width, height with anchors here
                 anchor_w, anchor_h = anchors[best_anchor]
-                obj[3] = obj[3] / anchor_w
-                obj[4] = obj[4] / anchor_h
+                obj[3] = np.log(obj[3] / anchor_w)
+                obj[4] = np.log(obj[4] / anchor_h)
                 coords[grid_cell, best_anchor, :] = obj[1:5]
                 box_mask[grid_cell, best_anchor] = 1.
 

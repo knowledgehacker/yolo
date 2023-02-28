@@ -55,14 +55,20 @@ class FastYolo(object):
         adjusted_conf = tf.sigmoid(nd_net_out[:, :, :, :, C])
         adjusted_conf = tf.reshape(adjusted_conf, [-1, H*W, B, 1])
 
+        # the bigger the box is, the smaller its weight is. the trick to improve detection on small objects???
+        true_wh = tf.exp(nd_coords[:, :, :, 2:4]) * np.reshape(config.anchors, [1, 1, config.B, 2])
+        coord_ratio = 2 - (true_wh[:, :, :, 0] / config.W) * (true_wh[:, :, :, 1] / config.H)
+        coord_ratio = tf.concat(4 * [tf.expand_dims(coord_ratio, -1)], 3)
+
         nd_coords_predict = nd_net_out[:, :, :, :, C+1:]
         nd_coords_predict = tf.reshape(nd_coords_predict, [-1, H*W, B, 4])
         # sigmoid to make sure nd_coords_predict[:, :, :, 0:2] is positive
         adjusted_coords_xy = tf.sigmoid(nd_coords_predict[:, :, :, 0:2])
-        adjusted_coords_wh = tf.exp(nd_coords_predict[:, :, :, 2:4])
+        adjusted_coords_wh = nd_coords_predict[:, :, :, 2:4]
         adjusted_coords_predict = tf.concat([adjusted_coords_xy, adjusted_coords_wh], 3)
 
-        adjusted_net_out = tf.concat([adjusted_class_prob, adjusted_conf, adjusted_coords_predict], 3)
+        #adjusted_net_out = tf.concat([adjusted_class_prob, adjusted_conf, adjusted_coords_predict], 3)
+        adjusted_net_out = tf.concat([adjusted_class_prob, adjusted_conf, coord_ratio * adjusted_coords_predict], 3)
 
         """
         confidence weight, positive and negative samples overlap, and some samples are neither positive nor negative ones
@@ -95,7 +101,8 @@ class FastYolo(object):
         coord_weight = coord_scale * box_coord
 
         # do not normalize with anchors in data.py, so do not adjust coordinate width and height here
-        true = tf.concat([nd_class_probs, tf.expand_dims(nd_conf, 3), nd_coords], 3)
+        #true = tf.concat([nd_class_probs, tf.expand_dims(nd_conf, 3), nd_coords], 3)
+        true = tf.concat([nd_class_probs, tf.expand_dims(nd_conf, 3), coord_ratio * nd_coords], 3)
         weights = tf.concat([class_weight, tf.expand_dims(conf_weight, 3), coord_weight], 3)
         weighted_square_error = weights * ((adjusted_net_out - true) ** 2)
         weighted_square_error = tf.reshape(weighted_square_error, [-1, H*W * B * (C + 1 + 4)])
