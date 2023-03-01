@@ -9,6 +9,7 @@ tf.disable_v2_behavior()
 
 def _extract_coords(coords):
     # unit: grid cell, w = orig_w / grid_w, h = orig_h / grid_h.
+    #wh = (tf.exp(coords[:, :, :, 2:4]) - 1e-8) * np.reshape(config.anchors, [1, 1, config.B, 2])
     wh = tf.exp(coords[:, :, :, 2:4]) * np.reshape(config.anchors, [1, 1, config.B, 2])
     area = wh[:, :, :, 0] * wh[:, :, :, 1]  # unit: grid cell^2
     xy_centre = coords[:, :, :, 0:2]  # [batch, SS, B, 2]

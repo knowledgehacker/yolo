@@ -116,16 +116,12 @@ def batch(image_dir, chunks, test=False):
             class_probs[grid_cell, :, labels.index(obj[0])] = 1.
             #class_mask[grid_cell, :, :] = [[1.] * C] * B
             conf[grid_cell, :] = [1.] * B
-            # coords[grid_cell, :, :] = [obj[1:5]] * B
-
             anchors = np.reshape(config.anchors, [B, 2])
+            coords[grid_cell, :, 0:2] = [obj[1:3]] * B
+            coords[grid_cell, :, 2:4] = np.log([obj[3:5]] * B / anchors + 1e-8)
+
             best_iou, best_anchor = find_best_anchor(obj, anchors)
             if best_iou > 0:
-                # normalize width, height with anchors here
-                anchor_w, anchor_h = anchors[best_anchor]
-                obj[3] = np.log(obj[3] / anchor_w)
-                obj[4] = np.log(obj[4] / anchor_h)
-                coords[grid_cell, best_anchor, :] = obj[1:5]
                 box_mask[grid_cell, best_anchor] = 1.
 
         image_batch.append(img)
