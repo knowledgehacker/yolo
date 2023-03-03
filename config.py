@@ -78,7 +78,7 @@ pt_net = "darknet19_448"
 # https://github.com/pjreddie/darknet/blob/master/cfg/yolov2-voc.cfg
 anchors = [1.32, 1.73, 3.19, 4.01, 5.05, 8.10, 9.47, 4.84, 11.23, 10.01]
 
-IOU_THRESHOLD = 0.3
+IOU_THRESHOLD = 0.5
 
 if DEVICE_TYPE == "gpu":
     data_format = "channels_first"
@@ -93,7 +93,7 @@ else:
     exit(-1)
 
 # P(object) * P(class|object), hope P(class|object) > THRESHOLD, P(object) ~ 1.0
-THRESHOLD = 0.3
+THRESHOLD = 0.5
 #THRESHOLD = 0.0
 
 NUM_EPOCH = 90

@@ -15,14 +15,14 @@ def process_box(b, h, w, threshold):
 	max_prob = b.probs[max_indx]
 	label = config.CLASSES[max_indx]
 	if max_prob > threshold:
-		left = int(b.x - b.w / 2. * w)
-		right = int(b.x + b.w / 2. * w)
-		top = int(b.y - b.h / 2. * h)
-		bot = int(b.y + b.h / 2. * h)
-		if left < 0:  left = 0
+		left  = int ((b.x - b.w/2.) * w)
+		right = int ((b.x + b.w/2.) * w)
+		top   = int ((b.y - b.h/2.) * h)
+		bot   = int ((b.y + b.h/2.) * h)
+		if left  < 0    :  left = 0
 		if right > w - 1: right = w - 1
-		if top < 0:   top = 0
-		if bot > h - 1:   bot = h - 1
+		if top   < 0    :   top = 0
+		if bot   > h - 1:   bot = h - 1
 		mess = '{}'.format(label)
 		return (left, right, top, bot, mess, max_indx, max_prob)
 	return None
