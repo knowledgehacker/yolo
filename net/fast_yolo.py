@@ -4,7 +4,7 @@ import numpy as np
 
 import config
 from net.small import Small
-from utils.iou import cal_iou
+from utils.iou import cal_iou, create_cell_xy
 
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()
@@ -34,11 +34,11 @@ class FastYolo(object):
         return net_out, pretrained_model
 
     """
-    reference to yolo_loss in yad2k/models/keras_yolo.py
-    TODO: get the detector mask, that is, find the best anchor for each ground truth box.
-    https://github.com/allanzelener/YAD2K/blob/a42c760ef868bc115e596b56863dc25624d2e756/yad2k/models/keras_yolo.py#L66
+    reference to loss_layer in wizyoung/YOLOv3_TensorFlow/model.py
+    https://github.com/wizyoung/YOLOv3_TensorFlow/blob/8776cf7b2531cae83f5fc730f3c70ae97919bfd6/model.py#L192
     """
-    def opt(self, net_out, nd_class_probs, nd_conf, nd_coords, box_mask):
+
+    def opt(self, net_out, nd_cls, nd_conf, nd_coord, box_mask):
         # parameters
         class_scale = config.class_scale
         obj_scale = config.object_scale
@@ -46,66 +46,65 @@ class FastYolo(object):
         coord_scale = config.coord_scale
         print('scales  = {}'.format([class_scale, obj_scale, noobj_scale, coord_scale]))
 
+        batch_num = tf.cast(tf.shape(net_out)[0], tf.float32)
+
+        anchors = np.reshape(config.anchors, [1, 1, 1, B, 2])
+        # shape of [H, W, B, 2] instead of [?, H, W, B, 2]
+        cell_xy = tf.concat(B * [create_cell_xy()], 2)
+
+        # handle net output feature map
         nd_net_out = tf.reshape(net_out, [-1, H, W, B, (C + 1 + 4)])
 
-        # adjust class probability, objectness(confidence), coordinate parts of net_out for loss calculation
-        adjusted_class_prob = tf.nn.softmax(nd_net_out[:, :, :, :, :C])
-        adjusted_class_prob = tf.reshape(adjusted_class_prob, [-1, H*W, B, C])
+        adjusted_cls, adjusted_conf, adjusted_coord = tf.split(nd_net_out, [C, 1, 4], axis=-1)
 
-        adjusted_conf = tf.sigmoid(nd_net_out[:, :, :, :, C])
-        adjusted_conf = tf.reshape(adjusted_conf, [-1, H*W, B, 1])
-
-        nd_coords_predict = nd_net_out[:, :, :, :, C+1:]
-        nd_coords_predict = tf.reshape(nd_coords_predict, [-1, H*W, B, 4])
-        # sigmoid to make sure nd_coords_predict[:, :, :, 0:2] is positive
-        adjusted_coords_xy = tf.sigmoid(nd_coords_predict[:, :, :, 0:2])
-        adjusted_coords_wh = nd_coords_predict[:, :, :, 2:4]
-        adjusted_coords_predict = tf.concat([adjusted_coords_xy, adjusted_coords_wh], 3)
-
-        adjusted_net_out = tf.concat([adjusted_class_prob, adjusted_conf, adjusted_coords_predict], 3)
+        # adjusted_coord[:, :, :, :, 0:2] is (t_x, t_y)
+        adjusted_coord_xy = tf.sigmoid(adjusted_coord[:, :, :, :, 0:2])
+        # adjusted_coord[:, :, :, :, 2:4] is (t_w, t_h)
+        adjusted_coord_wh = tf.clip_by_value(adjusted_coord[:, :, :, :, 2:4], -9, 9)
+        adjusted_coord = tf.concat([adjusted_coord_xy, adjusted_coord_wh], -1)
 
         """
-        confidence weight, positive and negative samples overlap, and some samples are neither positive nor negative ones
-        (the bounding boxes with highest iou >= threshold, but not responsible for any ground truth object detection).
+        confidence part, some samples are neither positive nor negative ones
+        (the boxes with highest iou >= threshold, but not responsible for detection on any ground truth object).
         """
         # positive samples(bounding boxes with the highest iou)' ground truth confidence is iou
-        positive = box_mask
+        positive = tf.expand_dims(box_mask, -1)
 
         # negative samples(bounding boxes with highest iou < threshold)' ground truth confidence is 0
-        iou = cal_iou(adjusted_coords_predict, nd_coords)
-        best_box = tf.equal(iou, tf.reduce_max(iou, axis=2, keepdims=True))
+        iou = cal_iou(adjusted_coord, nd_coord, cell_xy, anchors)
+        best_box = tf.equal(iou, tf.reduce_max(iou, axis=-1, keepdims=True))
         best_box_ge_thres = tf.equal(best_box, tf.greater_equal(iou, config.IOU_THRESHOLD))
-        negative = (1.0 - tf.to_float(best_box_ge_thres)) * (1.0 - box_mask)
+        negative = (1.0 - tf.expand_dims(tf.to_float(best_box_ge_thres), -1)) * (1.0 - positive)
 
-        conf_weight = obj_scale * positive + noobj_scale * negative
-
-        """
-        class weight, multiply positive to get the positive samples
-        """
-        box_class = tf.concat(C * [tf.expand_dims(positive, -1)], 3)
-        #class_weight = class_scale * class_mask * box_class
-        class_weight = class_scale * box_class
+        bce_conf = tf.nn.sigmoid_cross_entropy_with_logits(logits=adjusted_conf, labels=nd_conf)
+        conf_obj_loss = obj_scale * tf.reduce_sum(positive * bce_conf) / batch_num
+        conf_noobj_loss = noobj_scale * tf.reduce_sum(negative * bce_conf) / batch_num
+        conf_loss = conf_obj_loss + conf_noobj_loss
 
         """
-        coordinate weight, multiply positive to get the positive samples.
+        class part, multiply positive to get the positive samples.
+        """
+        cls_mask = tf.concat(C * [positive], -1)
+
+        bce_class = tf.nn.sigmoid_cross_entropy_with_logits(logits=adjusted_cls, labels=nd_cls)
+        class_loss = class_scale * tf.reduce_sum(cls_mask * bce_class) / batch_num
+
+        """
+        coordinate part, multiply positive to get the positive samples.
         use (b_x - c_x, b_y - c_y), (b_w / p_w, b_h / p_h) in coordinate loss, is it correct???
         I think so, (width, height) loss should be irrelevant to anchor size (width, height).
         """
-        box_coord = tf.concat(4 * [tf.expand_dims(positive, -1)], 3)
-
+        coord_mask = tf.concat(4 * [positive], -1)
         # the bigger the box is, the smaller its weight is. the trick to improve detection on small objects???
-        true_wh = tf.exp(nd_coords[:, :, :, 2:4]) * np.reshape(config.anchors, [1, 1, config.B, 2])
-        coord_ratio = 2 - (true_wh[:, :, :, 0] / config.W) * (true_wh[:, :, :, 1] / config.H)
-        coord_ratio = tf.concat(4 * [tf.expand_dims(coord_ratio, -1)], 3)
+        true_wh = tf.exp(nd_coord[:, :, :, :, 2:4]) * anchors
+        coord_ratio = 2 - (true_wh[:, :, :, :, 0] / W) * (true_wh[:, :, :, :, 1] / H)
+        coord_ratio = tf.concat(4 * [tf.expand_dims(coord_ratio, -1)], -1)
 
-        coord_weight = coord_scale * box_coord * coord_ratio
+        se_coord = (adjusted_coord - nd_coord) ** 2
+        coord_loss = coord_scale * tf.reduce_sum(coord_ratio * coord_mask * se_coord) / batch_num
 
-        # do not normalize with anchors in data.py, so do not adjust coordinate width and height here
-        true = tf.concat([nd_class_probs, tf.expand_dims(nd_conf, 3), nd_coords], 3)
-        weights = tf.concat([class_weight, tf.expand_dims(conf_weight, 3), coord_weight], 3)
-        weighted_square_error = weights * ((adjusted_net_out - true) ** 2)
-        weighted_square_error = tf.reshape(weighted_square_error, [-1, H*W * B * (C + 1 + 4)])
-        loss_op = 0.5 * tf.reduce_mean(tf.reduce_sum(weighted_square_error, 1), name="loss")
+        # total loss
+        loss_op = tf.add_n([conf_loss, class_loss, coord_loss], name="loss")
 
         return loss_op
 

@@ -54,19 +54,19 @@ def train():
         #To be able to feed with batches of different size, the first dimension should be None
         image_ph = tf.placeholder(dtype=tf.float32, shape=config.placeholder_image_shape, name="image_ph")
         bounding_box_ph_dict = {
-            "class_probs": tf.placeholder(dtype=tf.float32, shape=(None, H*W, B, C), name="class_probs_ph"),
-            #"class_mask": tf.placeholder(dtype=tf.float32, shape=(None, H*W, B, C), name="class_mask_ph"),
-            "conf": tf.placeholder(dtype=tf.float32, shape=(None, H*W, B), name="conf_ph"),
-            "coords": tf.placeholder(dtype=tf.float32, shape=(None, H*W, B, 4), name="coords_ph"),
-            "box_mask": tf.placeholder(dtype=tf.float32, shape=(None, H * W, B), name="box_mask_ph")
+            "cls": tf.placeholder(dtype=tf.float32, shape=(None, H, W, B, C), name="cls_ph"),
+            #"cls_mask": tf.placeholder(dtype=tf.float32, shape=(None, H, W, B, C), name="cls_mask_ph"),
+            "conf": tf.placeholder(dtype=tf.float32, shape=(None, H, W, B, 1), name="conf_ph"),
+            "coord": tf.placeholder(dtype=tf.float32, shape=(None, H, W, B, 4), name="coord_ph"),
+            "box_mask": tf.placeholder(dtype=tf.float32, shape=(None, H, W, B), name="box_mask_ph")
         }
         dropout_keep_prob_ph = tf.placeholder(tf.float32, name="dropout_keep_prob_ph")
 
         net_out_op, pretrained_model = model.forward(image_ph, config.input_shape, config.data_format,
                                                      dropout_keep_prob_ph, True)
-        loss_op = model.opt(net_out_op, bounding_box_ph_dict["class_probs"], #bounding_box_ph_dict["class_mask"],
+        loss_op = model.opt(net_out_op, bounding_box_ph_dict["cls"], #bounding_box_ph_dict["cls_mask"],
                             bounding_box_ph_dict["conf"],
-                            bounding_box_ph_dict["coords"], bounding_box_ph_dict["box_mask"])
+                            bounding_box_ph_dict["coord"], bounding_box_ph_dict["box_mask"])
 
     with tf.Session(graph=g, config=cfg) as sess:
         """

@@ -60,10 +60,10 @@ C, labels = config.C, config.CLASSES
 def batch(image_dir, chunks, test=False):
     image_batch = []
 
-    class_probs_batch = []
-    #class_mask_batch = []
+    cls_batch = []
+    #cls_mask_batch = []
     conf_batch = []
-    coords_batch = []
+    coord_batch = []
     box_mask_batch = []
 
     for chunk in chunks:
@@ -82,11 +82,11 @@ def batch(image_dir, chunks, test=False):
         img = resize_input(img)
 
         # Calculate placeholders' values
-        class_probs = np.zeros([H*W, B, C])
-        #class_mask = np.zeros([H*W, B, C])
-        conf = np.zeros([H*W, B])
-        coords = np.zeros([H*W, B, 4])
-        box_mask = np.zeros([H*W, B])
+        cls = np.zeros([H, W, B, C])
+        #cls_mask = np.zeros([H, W, B, C])
+        conf = np.zeros([H, W, B, 1])
+        coord = np.zeros([H, W, B, 4])
+        box_mask = np.zeros([H, W, B])
 
         # Calculate regression target, normalize the items in the loss formula
         grid_w = 1. * w / W
@@ -103,7 +103,7 @@ def batch(image_dir, chunks, test=False):
                 return None, None
             grid_cx = int(cx)
             grid_cy = int(cy)
-            grid_cell = grid_cy * W + grid_cx
+            #grid_cell = grid_cy * W + grid_cx
 
             # you should handle obj[3]/[4] first, then obj[1]/[2], since obj[1]/[2] is used in obj[3]/[4]
             obj[3] = float(obj[3] - obj[1]) / grid_w
@@ -112,36 +112,40 @@ def batch(image_dir, chunks, test=False):
             obj[2] = cy - grid_cy
 
             # Calculate placeholders' values
-            class_probs[grid_cell, :, :] = [[0.] * C] * B
-            class_probs[grid_cell, :, labels.index(obj[0])] = 1.
-            #class_mask[grid_cell, :, :] = [[1.] * C] * B
-            conf[grid_cell, :] = [1.] * B
+            cls[grid_cy, grid_cx, :, :] = [[0.] * C] * B
+            cls[grid_cy, grid_cx, :, labels.index(obj[0])] = 1.
+            #cls_mask[grid_cy, grid_cx, :, :] = [[1.] * C] * B
+            conf[grid_cy, grid_cx, :] = [[1.]] * B
             anchors = np.reshape(config.anchors, [B, 2])
-            coords[grid_cell, :, 0:2] = [obj[1:3]] * B
-            coords[grid_cell, :, 2:4] = np.log([obj[3:5]] * B / anchors + 1e-8)
+            coord[grid_cy, grid_cx, :, 0:2] = [obj[1:3]] * B
+            coord[grid_cy, grid_cx, :, 2:4] = np.log(clip_by_value([obj[3:5]] * B / anchors, 1e-9, 1e9))
 
             best_iou, best_anchor = find_best_anchor(obj, anchors)
             if best_iou > 0:
-                box_mask[grid_cell, best_anchor] = 1.
+                box_mask[grid_cy, grid_cx, best_anchor] = 1.
 
         image_batch.append(img)
 
-        class_probs_batch.append(class_probs)
-        #class_mask_batch.append(class_mask)
+        cls_batch.append(cls)
+        #cls_mask_batch.append(cls_mask)
         conf_batch.append(conf)
-        coords_batch.append(coords)
+        coord_batch.append(coord)
         box_mask_batch.append(box_mask)
 
     inp_feed_val = np.array(image_batch)
     loss_feed_val = {
-        'class_probs': np.array(class_probs_batch),
-        #'class_mask': np.array(class_mask_batch),
+        'cls': np.array(cls_batch),
+        #'cls_mask': np.array(cls_mask_batch),
         'conf': np.array(conf_batch),
-        'coords': np.array(coords_batch),
+        'coord': np.array(coord_batch),
         'box_mask': np.array(box_mask_batch)
     }
 
     return inp_feed_val, loss_feed_val
+
+
+def clip_by_value(value, lb, ub):
+    return np.minimum(np.maximum(value, lb), ub)
 
 
 def find_best_anchor(obj, anchors):
@@ -166,6 +170,7 @@ def find_best_anchor(obj, anchors):
             best_anchor = k
 
     return best_iou, best_anchor
+
 
 def get_batch_num(data, batch_size):
     size = len(data)

@@ -42,10 +42,10 @@ def test():
 
         image_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "image_ph:0"))
         bounding_box_ph_dict = {
-            "class_probs": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "class_probs_ph:0")),
-            #"class_mask": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "class_mask_ph:0")),
+            "cls": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "cls_ph:0")),
+            #"cls_mask": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "cls_mask_ph:0")),
             "conf": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "conf_ph:0")),
-            "coords": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "coords_ph:0")),
+            "coord": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "coord_ph:0")),
             "box_mask": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "box_mask_ph:0"))
         }
         #dropout_keep_prob_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "dropout_keep_prob_ph:0"))
