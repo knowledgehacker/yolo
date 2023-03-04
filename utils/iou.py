@@ -8,7 +8,7 @@ tf.disable_v2_behavior()
 
 
 def _extract_coords(coords, cell_coords, anchors):
-    # unit: grid cell, w = orig_w / grid_w, h = orig_h / grid_h.
+    # unit: grid cell, w = resize_w / grid_w, h = resize_h / grid_h.
     wh = tf.exp(coords[:, :, :, :, 2:4]) * anchors
     area = wh[:, :, :, :, 0] * wh[:, :, :, :, 1]  # unit: grid cell^2
     xy_centre = coords[:, :, :, :, 0:2] + cell_coords  # [batch, W, H, B, 2]
@@ -41,7 +41,7 @@ def cal_iou(coords_predict, coords_true, cell_coords, anchors):
 
 def create_cell_xy():
     # use some broadcast tricks to get the mesh coordinates
-    w, h = config.W, config.H
+    h, w = config.H, config.W
 
     grid_x = tf.range(w, dtype=tf.int32)
     grid_y = tf.range(h, dtype=tf.int32)

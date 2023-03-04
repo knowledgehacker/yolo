@@ -61,13 +61,10 @@ class_scale = 1.0
 coord_scale = 1.0
 
 OPTIMIZER = 'adam'
-# LR = 1e-5   # starts with 1e-5 gets nan after ~18 steps
-MOMENTUM = 0.9
-DECAY = 5e-4
 
 BOUNDARIES = [0, 30]
 LRS = [1e-5, 1e-6]
-BATCH_SIZES = [16, 32]
+BATCH_SIZES = [32, 40]
 
 TEST_BATCH_SIZE = 1
 
@@ -93,13 +90,10 @@ else:
     exit(-1)
 
 # P(object) * P(class|object), hope P(class|object) > THRESHOLD, P(object) ~ 1.0
-THRESHOLD = 0.5
-#THRESHOLD = 0.0
+THRESHOLD = 0.3
 
 NUM_EPOCH = 90
-#NUM_EPOCH = 5
 
-#STEPS_PER_CKPT = 10
 STEPS_PER_CKPT = 1
 
 TRAIN_KEEP_PROB = 0.5

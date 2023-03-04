@@ -37,7 +37,6 @@ class FastYolo(object):
     reference to loss_layer in wizyoung/YOLOv3_TensorFlow/model.py
     https://github.com/wizyoung/YOLOv3_TensorFlow/blob/8776cf7b2531cae83f5fc730f3c70ae97919bfd6/model.py#L192
     """
-
     def opt(self, net_out, nd_cls, nd_conf, nd_coord, box_mask):
         # parameters
         class_scale = config.class_scale
