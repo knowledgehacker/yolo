@@ -7,7 +7,7 @@ import json
 import cv2
 
 import config
-from cython_utils.cy_yolo2_findboxes import box_constructor
+from cython_utils.cy_yolo3_findboxes import box_constructor
 
 
 def process_box(b, h, w, threshold):

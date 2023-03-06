@@ -16,13 +16,8 @@ ext_modules = [
               libraries=["m"],  # Unix-like specific
               include_dirs=[numpy.get_include()]
               ),
-    Extension("cython_utils.cy_yolo_findboxes",
-              sources=["cython_utils/cy_yolo_findboxes.pyx"],
-              libraries=["m"],  # Unix-like specific
-              include_dirs=[numpy.get_include()]
-              ),
-    Extension("cython_utils.cy_yolo2_findboxes",
-              sources=["cython_utils/cy_yolo2_findboxes.pyx"],
+    Extension("cython_utils.cy_yolo3_findboxes",
+              sources=["cython_utils/cy_yolo3_findboxes.pyx"],
               libraries=["m"],  # Unix-like specific
               include_dirs=[numpy.get_include()]
               )
@@ -31,7 +26,7 @@ ext_modules = [
 setup(
     version=VERSION,
     name='yolo',
-    description='YOLO',
+    description='YOLO V3',
     license='GPLv3',
     url='https://github.com/knowledgehacker/yolo',
     packages=find_packages(),

@@ -18,15 +18,18 @@ VOC2012_2007_DIR = '%s/%s' % (DATA_DIR, 'VOC2012')
 ANNOTATION_TRAIN_DIR = '/content/%s/train/Annotations' % VOC2012_2007_DIR
 IMAGE_TRAIN_DIR = '/content/%s/train/JPEGImages' % VOC2012_2007_DIR
 
-#ANNOTATION_TEST_DIR = 'data/tmp/Annotations'
-#IMAGE_TEST_DIR = 'data/tmp/JPEGImages'
+# kaggle
+ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % VOC2012_2007_DIR
+IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % VOC2012_2007_DIR
 
-ANNOTATION_TEST_DIR = '%s/test/Annotations' % VOC2007_DIR
-IMAGE_TEST_DIR = '%s/test/JPEGImages' % VOC2007_DIR
+#ANNOTATION_TEST_DIR = '%s/test/Annotations' % VOC2007_DIR
+#IMAGE_TEST_DIR = '%s/test/JPEGImages' % VOC2007_DIR
 
 #ANNOTATION_TEST_DIR = '/content/%s/test/Annotations' % VOC2007_DIR
 #IMAGE_TEST_DIR = '/content/%s/test/JPEGImages' % VOC2007_DIR
 
+ANNOTATION_TEST_DIR = 'data/tmp/Annotations'
+IMAGE_TEST_DIR = 'data/tmp/JPEGImages'
 
 OUT_DIR = "out/%s" % VERSION
 IMAGE_OUT_DIR = "%s/Image" % OUT_DIR
@@ -90,7 +93,7 @@ else:
     exit(-1)
 
 # P(object) * P(class|object), hope P(class|object) > THRESHOLD, P(object) ~ 1.0
-THRESHOLD = 0.3
+THRESHOLD = 0.6
 
 NUM_EPOCH = 90
 

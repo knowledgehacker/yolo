@@ -67,7 +67,7 @@ cdef NMS(float[:, ::1] final_probs , float[:, ::1] final_bbox):
     cdef:
         np.intp_t pred_length,class_length,class_loop,index,index2
 
-  
+    # TODO: handle the multiple label case
     pred_length = final_bbox.shape[0]
     class_length = final_probs.shape[1]
     for class_loop in range(class_length):
@@ -84,11 +84,11 @@ cdef NMS(float[:, ::1] final_probs , float[:, ::1] final_bbox):
             
             if index not in indices:
                 bb=BoundBox(class_length)
-                bb.x = final_bbox[index, 0]
-                bb.y = final_bbox[index, 1]
-                bb.w = final_bbox[index, 2]
-                bb.h = final_bbox[index, 3]
-                bb.c = final_bbox[index, 4]
+                bb.x = final_bbox[index, 1]
+                bb.y = final_bbox[index, 2]
+                bb.w = final_bbox[index, 3]
+                bb.h = final_bbox[index, 4]
+                bb.c = final_bbox[index, 0]
                 bb.probs = np.asarray(final_probs[index,:])
                 boxes.append(bb)
                 indices.add(index)
