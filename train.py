@@ -55,18 +55,16 @@ def train():
         image_ph = tf.placeholder(dtype=tf.float32, shape=config.placeholder_image_shape, name="image_ph")
         bounding_box_ph_dict = {
             "cls": tf.placeholder(dtype=tf.float32, shape=(None, H, W, B, C), name="cls_ph"),
-            #"cls_mask": tf.placeholder(dtype=tf.float32, shape=(None, H, W, B, C), name="cls_mask_ph"),
             "conf": tf.placeholder(dtype=tf.float32, shape=(None, H, W, B, 1), name="conf_ph"),
-            "coord": tf.placeholder(dtype=tf.float32, shape=(None, H, W, B, 4), name="coord_ph"),
-            "box_mask": tf.placeholder(dtype=tf.float32, shape=(None, H, W, B), name="box_mask_ph")
+            "coord": tf.placeholder(dtype=tf.float32, shape=(None, H, W, B, 4), name="coord_ph")
         }
         dropout_keep_prob_ph = tf.placeholder(tf.float32, name="dropout_keep_prob_ph")
 
         net_out_op, pretrained_model = model.forward(image_ph, config.input_shape, config.data_format,
                                                      dropout_keep_prob_ph, True)
-        loss_op = model.opt(net_out_op, bounding_box_ph_dict["cls"], #bounding_box_ph_dict["cls_mask"],
+        loss_op = model.opt(net_out_op, bounding_box_ph_dict["cls"],
                             bounding_box_ph_dict["conf"],
-                            bounding_box_ph_dict["coord"], bounding_box_ph_dict["box_mask"])
+                            bounding_box_ph_dict["coord"])
 
     with tf.Session(graph=g, config=cfg) as sess:
         """

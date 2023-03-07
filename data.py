@@ -52,10 +52,8 @@ def batch(image_dir, chunks, test=False):
     image_batch = []
 
     cls_batch = []
-    #cls_mask_batch = []
     conf_batch = []
     coord_batch = []
-    box_mask_batch = []
 
     for chunk in chunks:
         # preprocess
@@ -79,64 +77,41 @@ def batch(image_dir, chunks, test=False):
         img = img / 255.
 
         # Calculate placeholders' values
+        # https://github.com/wizyoung/YOLOv3_TensorFlow/blob/8776cf7b2531cae83f5fc730f3c70ae97919bfd6/utils/data_utils.py#L51
         cls = np.zeros([H, W, B, C])
-        #cls_mask = np.zeros([H, W, B, C])
         conf = np.zeros([H, W, B, 1])
         coord = np.zeros([H, W, B, 4])
-        box_mask = np.zeros([H, W, B])
 
-        # Calculate regression target, normalize the items in the loss formula
         # Use (resize_w, resize_h) not (image_w, image_h) here, otherwise the image and boxes in it will be inconsistent
-        grid_w = 1. * resize_w / W
-        grid_h = 1. * resize_h / H
+        grid_wh = np.array([1. * resize_w / W, 1. * resize_h / H])
 
-        for label, obj in zip(labels, objs):
-            box = np.zeros([4])
+        # normalized box center x/y coordinates and width/height to in grid unit
+        box_centers = ((objs[:, 0:2] + objs[:, 2:4]) / 2.) / grid_wh
+        box_sizes = (objs[:, 2:4] - objs[:, 0:2]) / grid_wh
+        anchors = np.reshape(config.anchors, [B, 2])
+        best_match_anchors = find_best_match_anchors(box_sizes, anchors)
+        for i in range(len(best_match_anchors)):
+            anchor_index = best_match_anchors[i]
 
-            # centrex = 1/2 * (xmin + xmax), centrey = 1/2 * (ymin + ymax)
-            centerx = .5 * (obj[0] + obj[2]) #xmin, xmax
-            centery = .5 * (obj[1] + obj[3]) #ymin, ymax
-            cx = centerx / grid_w
-            cy = centery / grid_h
-            if cx >= W or cy >= H:
-                print("Warning - image %s has bad coordinate!" % path)
-                return None, None
-            grid_cx = int(cx)
-            grid_cy = int(cy)
+            cx, cy = box_centers[i]
+            grid_cx, grid_cy = int(np.floor(cx)), int(np.floor(cy))
+            cls[grid_cy, grid_cx, anchor_index, classes.index(labels[i])] = 1.
+            conf[grid_cy, grid_cx, anchor_index, 0] = 1.
+            coord[grid_cy, grid_cx, anchor_index, 0:2] = [cx - grid_cx, cy - grid_cy]
+            coord[grid_cy, grid_cx, anchor_index, 2:4] = np.log(clip_by_value(box_sizes[i] / anchors[anchor_index], 1e-9, 1e9))
 
-            box[2] = float(obj[2] - obj[0]) / grid_w
-            box[3] = float(obj[3] - obj[1]) / grid_h
-            box[0] = cx - grid_cx
-            box[1] = cy - grid_cy
-
-            # Calculate placeholders' values
-            cls[grid_cy, grid_cx, :, :] = [[0.] * C] * B
-            cls[grid_cy, grid_cx, :, classes.index(label)] = 1.
-            #cls_mask[grid_cy, grid_cx, :, :] = [[1.] * C] * B
-            conf[grid_cy, grid_cx, :] = [[1.]] * B
-            anchors = np.reshape(config.anchors, [B, 2])
-            coord[grid_cy, grid_cx, :, 0:2] = [box[0:2]] * B
-            coord[grid_cy, grid_cx, :, 2:4] = np.log(clip_by_value([box[2:4]] * B / anchors, 1e-9, 1e9))
-
-            best_iou, best_anchor = find_best_anchor(box, anchors)
-            if best_iou > 0:
-                box_mask[grid_cy, grid_cx, best_anchor] = 1.
-
+        # collect regression items
         image_batch.append(img)
 
         cls_batch.append(cls)
-        #cls_mask_batch.append(cls_mask)
         conf_batch.append(conf)
         coord_batch.append(coord)
-        box_mask_batch.append(box_mask)
 
     inp_feed_val = np.array(image_batch)
     loss_feed_val = {
         'cls': np.array(cls_batch),
-        #'cls_mask': np.array(cls_mask_batch),
         'conf': np.array(conf_batch),
-        'coord': np.array(coord_batch),
-        'box_mask': np.array(box_mask_batch)
+        'coord': np.array(coord_batch)
     }
 
     return inp_feed_val, loss_feed_val
@@ -146,28 +121,25 @@ def clip_by_value(value, lb, ub):
     return np.minimum(np.maximum(value, lb), ub)
 
 
-def find_best_anchor(obj, anchors):
-    best_iou = 0
-    best_anchor = 0
-    for k, anchor in enumerate(anchors):
-        # Find IOU between box shifted to origin and anchor box.
-        box_maxes = obj[2:4] / 2.
-        box_mins = -box_maxes
-        anchor_maxes = anchor / 2.
-        anchor_mins = -anchor_maxes
+def find_best_match_anchors(box_sizes, anchors):
+    # [N, 1, 2]
+    box_sizes = np.expand_dims(box_sizes, 1)
+    # broadcast tricks
+    # [N, 1, 2] & [9, 2] ==> [N, 9, 2]
+    intersect_mins = np.maximum(- box_sizes / 2., - anchors / 2.)
+    intersect_maxs = np.minimum(box_sizes / 2., anchors / 2.)
+    intersect_whs = np.maximum(intersect_maxs - intersect_mins, 0.)
+    intersect_areas = intersect_whs[:, :, 0] * intersect_whs[:, :, 1]
 
-        intersect_mins = np.maximum(box_mins, anchor_mins)
-        intersect_maxes = np.minimum(box_maxes, anchor_maxes)
-        intersect_wh = np.maximum(intersect_maxes - intersect_mins, 0.)
-        intersect_area = intersect_wh[0] * intersect_wh[1]
-        box_area = obj[2] * obj[3]
-        anchor_area = anchor[0] * anchor[1]
-        iou = intersect_area / (box_area + anchor_area - intersect_area)
-        if iou > best_iou:
-            best_iou = iou
-            best_anchor = k
+    box_areas = box_sizes[:, :, 0] * box_sizes[:, :, 1]
 
-    return best_iou, best_anchor
+    anchor_areas = anchors[:, 0] * anchors[:, 1]
+
+    ious = intersect_areas / (box_areas + anchor_areas - intersect_areas + 1e-9)
+
+    best_anchors = np.argmax(ious, axis=1)
+
+    return best_anchors
 
 
 def get_batch_num(data, batch_size):

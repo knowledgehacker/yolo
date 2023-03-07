@@ -38,17 +38,3 @@ def cal_iou(coords_predict, coords_true, cell_coords, anchors):
 
     return iou
 
-
-def create_cell_xy():
-    # use some broadcast tricks to get the mesh coordinates
-    h, w = config.H, config.W
-
-    grid_x = tf.range(w, dtype=tf.int32)
-    grid_y = tf.range(h, dtype=tf.int32)
-    grid_x, grid_y = tf.meshgrid(grid_x, grid_y)
-    x_offset = tf.reshape(grid_x, (-1, 1))
-    y_offset = tf.reshape(grid_y, (-1, 1))
-    x_y_offset = tf.concat([x_offset, y_offset], axis=-1)
-    x_y_offset = tf.cast(tf.reshape(x_y_offset, [h, w, 1, 2]), tf.float32)
-
-    return x_y_offset

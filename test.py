@@ -43,10 +43,8 @@ def test():
         image_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "image_ph:0"))
         bounding_box_ph_dict = {
             "cls": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "cls_ph:0")),
-            #"cls_mask": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "cls_mask_ph:0")),
             "conf": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "conf_ph:0")),
-            "coord": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "coord_ph:0")),
-            "box_mask": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "box_mask_ph:0"))
+            "coord": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "coord_ph:0"))
         }
         #dropout_keep_prob_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "dropout_keep_prob_ph:0"))
 
@@ -54,10 +52,14 @@ def test():
         net_out_op = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "net_out:0"))
         loss_op = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "loss:0"))
 
-        batch_size, batch_num = get_batch_num(data, config.TEST_BATCH_SIZE)
-        print("batch_size: %d, batch_num: %d" % (batch_size, batch_num))
+        batch_size = config.TEST_BATCH_SIZE
+        batch_num, last_batch_size = get_batch_num(data, batch_size)
+        print("batch_num: %d, batch_size: %d, last_batch_size: %d" % (batch_num, batch_size, last_batch_size))
         for b in range(batch_num):
             step = b + 1
+
+            if (step == batch_num) and (last_batch_size > 0):
+                batch_size = last_batch_size
 
             # get data
             print(current_time(), "batch %d get data starts ..." % step)
