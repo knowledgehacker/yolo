@@ -112,19 +112,17 @@ def train():
                 # initialize optimizer variables
                 tf.variables_initializer(optimizer.variables()).run()
 
-            """
-            with tf.device("/cpu:0"):
-                batches = shuffle(config.IMAGE_TRAIN_DIR, data)
-
-            for j, (images, bounding_box_dict) in enumerate(batches):
-            """
-
+            # shuffle data
             shuffle_idx = perm(len(data))
 
-            batch_size, batch_num = get_batch_num(data, config.BATCH_SIZES[boundary_idx])
-            print("batch_size: %d, batch_num: %d" % (batch_size, batch_num))
+            batch_size = config.BATCH_SIZES[boundary_idx]
+            batch_num, last_batch_size = get_batch_num(data, batch_size)
+            print("batch_num: %d, batch_size: %d, last_batch_size: %d" % (batch_num, batch_size, last_batch_size))
             for b in range(batch_num):
                 step = b + 1
+
+                if (step == batch_num) and (last_batch_size > 0):
+                    batch_size = last_batch_size
 
                 # get data
                 print(current_time(), "batch %d get data starts ..." % step)

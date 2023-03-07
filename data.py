@@ -171,32 +171,14 @@ def find_best_anchor(obj, anchors):
 
 
 def get_batch_num(data, batch_size):
+    last_batch_size = 0
+
     size = len(data)
-
-    if batch_size > size:
-        batch_size = size
     batch_num = int(size / batch_size)
+    processed_size = batch_num * batch_size
+    if processed_size < size:
+        batch_num += 1
+        last_batch_size = size - processed_size
 
-    return batch_size, batch_num
+    return batch_num, last_batch_size
 
-"""
-def shuffle(image_dir, data):
-    print(current_time(), "Shuffle starts ...")
-
-    batch_size = config.BATCH_SIZE
-    batch_num = get_batch_num(data, batch_size)
-
-    shuffle_idx = perm(np.arange(len(data)))
-    for b in range(batch_num):
-        chunks = [data[i] for i in shuffle_idx[b * batch_size: (b+1) * batch_size]]
-        x_batch, feed_batch = _batch(image_dir, chunks)
-        if x_batch is None:
-            print(current_time(), "batch %d skipped!" % (b+1))
-            continue
-
-        print(current_time(), "batch %d data ready!" % (b+1))
-
-        yield x_batch, feed_batch
-
-    print(current_time(), "Shuffle finished!")
-"""

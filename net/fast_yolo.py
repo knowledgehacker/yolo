@@ -45,7 +45,7 @@ class FastYolo(object):
         coord_scale = config.coord_scale
         print('scales  = {}'.format([class_scale, obj_scale, noobj_scale, coord_scale]))
 
-        batch_num = tf.cast(tf.shape(net_out)[0], tf.float32)
+        batch_size = tf.cast(tf.shape(net_out)[0], tf.float32)
 
         anchors = np.reshape(config.anchors, [1, 1, 1, B, 2])
         # shape of [H, W, B, 2] instead of [?, H, W, B, 2]
@@ -76,8 +76,8 @@ class FastYolo(object):
         negative = (1.0 - tf.expand_dims(tf.to_float(best_box_ge_thres), -1)) * (1.0 - positive)
 
         bce_conf = tf.nn.sigmoid_cross_entropy_with_logits(logits=adjusted_conf, labels=nd_conf)
-        conf_obj_loss = obj_scale * tf.reduce_sum(positive * bce_conf) / batch_num
-        conf_noobj_loss = noobj_scale * tf.reduce_sum(negative * bce_conf) / batch_num
+        conf_obj_loss = obj_scale * tf.reduce_sum(positive * bce_conf) / batch_size
+        conf_noobj_loss = noobj_scale * tf.reduce_sum(negative * bce_conf) / batch_size
         conf_loss = conf_obj_loss + conf_noobj_loss
 
         """
@@ -86,7 +86,7 @@ class FastYolo(object):
         cls_mask = tf.concat(C * [positive], -1)
 
         bce_class = tf.nn.sigmoid_cross_entropy_with_logits(logits=adjusted_cls, labels=nd_cls)
-        class_loss = class_scale * tf.reduce_sum(cls_mask * bce_class) / batch_num
+        class_loss = class_scale * tf.reduce_sum(cls_mask * bce_class) / batch_size
 
         """
         coordinate part, multiply positive to get the positive samples.
@@ -100,7 +100,7 @@ class FastYolo(object):
         coord_ratio = tf.concat(4 * [tf.expand_dims(coord_ratio, -1)], -1)
 
         se_coord = (adjusted_coord - nd_coord) ** 2
-        coord_loss = coord_scale * tf.reduce_sum(coord_ratio * coord_mask * se_coord) / batch_num
+        coord_loss = coord_scale * tf.reduce_sum(coord_ratio * coord_mask * se_coord) / batch_size
 
         # total loss
         loss_op = tf.add_n([conf_loss, class_loss, coord_loss], name="loss")
