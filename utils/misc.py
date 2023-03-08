@@ -66,31 +66,16 @@ def save_model(sess, model_dir, model_name, outputs):
         fout.write(output_graph_def.SerializeToString())
 
 
-def get_optimizer(lr):
+def get_optimizer(lr, decay=0.9, momentum=0.9):
     if config.OPTIMIZER == 'momentum':
-        optimizer = tf.train.MomentumOptimizer(learning_rate=lr, momentum=config.MOMENTUM)
+        optimizer = tf.train.MomentumOptimizer(learning_rate=lr, momentum=momentum)
     elif config.OPTIMIZER == 'adagrad':
         optimizer = tf.train.AdagradOptimizer(learning_rate=lr, initial_accumulator_value=1e-8)
     elif config.OPTIMIZER == 'rmsprop':
-        optimizer = tf.train.RMSPropOptimizer(learning_rate=lr, decay=config.DECAY, momentum=config.MOMENTUM)
+        optimizer = tf.train.RMSPropOptimizer(learning_rate=lr, decay=decay, momentum=momentum)
     elif config.OPTIMIZER == 'adam':
         optimizer = tf.train.AdamOptimizer(learning_rate=lr)
     else:
         print("Unsupported optimizer: %s" % config.OPTIMIZER)
 
     return optimizer
-
-
-def get_boundary(epoch, boundaries):
-    idx = -1
-
-    boundary_num = len(boundaries)
-    for i in range(1, boundary_num):
-        if epoch < boundaries[i]:
-            idx = i - 1
-            break
-    if idx == -1:
-        idx = boundary_num - 1
-
-    return idx
-

@@ -62,20 +62,23 @@ IMG_H, IMG_W, IMG_CH = 416, 416, 3
 H, W = 13, 13
 B = 5
 
+KEEP_ASPECT_RATIO = False
+
 # term scale in loss formula
 object_scale = 5.0
 noobject_scale = 1.0
 class_scale = 1.0
 coord_scale = 1.0
 
+# optimizer
 OPTIMIZER = 'adam'
 
 USE_WARMUP = True
 WARMUP_EPOCH = 3
-LR_INIT = 1e-4
+LR_INIT = 1e-5
 BOUNDARIES = [25, 40]
-LRS = [LR_INIT, 3e-5, 1e-4]
-TRAIN_BATCH_SIZE = 32
+LRS = [LR_INIT, 3e-6, 1e-5]
+TRAIN_BATCH_SIZE = 8
 
 
 TEST_BATCH_SIZE = 1
@@ -102,7 +105,7 @@ else:
     exit(-1)
 
 # P(object) * P(class|object), hope P(class|object) > THRESHOLD, P(object) ~ 1.0
-THRESHOLD = 0.6
+THRESHOLD = 0.2
 
 NUM_EPOCH = 100
 

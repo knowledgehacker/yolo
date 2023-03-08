@@ -68,11 +68,12 @@ def batch(image_dir, chunks, test=False):
         resize_w, resize_h = config.IMG_W, config.IMG_H
 
         img = cv2.imread(path)
+        interp = 1
         if not test:
             img, objs = data_aug(img, objs, resize_w, resize_h)
-            img, objs = resize_with_bbox(img, objs, resize_w, resize_h, interp=np.random.randint(0, 5), letterbox=letterbox_resize)
-        else:
-            img, objs = resize_with_bbox(img, objs, resize_w, resize_h, interp=1, letterbox=letterbox_resize)
+            interp = np.random.randint(0, 5)
+        img, objs = resize_with_bbox(img, objs, resize_w, resize_h, interp=interp, letterbox=config.KEEP_ASPECT_RATIO)
+
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32)
         img = img / 255.
 

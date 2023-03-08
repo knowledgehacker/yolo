@@ -15,7 +15,7 @@ from net.fast_yolo import FastYolo
 
 #from data import shuffle
 from data import get_batch_num, batch
-from utils.misc import current_time, get_boundary, get_optimizer, save_model
+from utils.misc import current_time, get_optimizer, save_model
 
 """
 import tensorflow as tf
