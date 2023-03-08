@@ -18,11 +18,14 @@ VOC2012_2007_DIR = '%s/%s' % (DATA_DIR, 'VOC2012')
 ANNOTATION_TRAIN_DIR = '/content/%s/train/Annotations' % VOC2012_2007_DIR
 IMAGE_TRAIN_DIR = '/content/%s/train/JPEGImages' % VOC2012_2007_DIR
 
-"""
+
 # kaggle
 ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % VOC2012_2007_DIR
 IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % VOC2012_2007_DIR
-"""
+
+
+#ANNOTATION_TRAIN_DIR = 'data/tmp/Annotations'
+#IMAGE_TRAIN_DIR = 'data/tmp/JPEGImages'
 
 #ANNOTATION_TEST_DIR = '%s/test/Annotations' % VOC2007_DIR
 #IMAGE_TEST_DIR = '%s/test/JPEGImages' % VOC2007_DIR
@@ -67,9 +70,13 @@ coord_scale = 1.0
 
 OPTIMIZER = 'adam'
 
-BOUNDARIES = [0, 45, 90]
-LRS = [1e-4, 1e-5, 1e-6]
-BATCH_SIZES = [32, 32, 40]
+USE_WARMUP = True
+WARMUP_EPOCH = 3
+LR_INIT = 1e-4
+BOUNDARIES = [25, 40]
+LRS = [LR_INIT, 3e-5, 1e-4]
+TRAIN_BATCH_SIZE = 32
+
 
 TEST_BATCH_SIZE = 1
 
@@ -97,7 +104,7 @@ else:
 # P(object) * P(class|object), hope P(class|object) > THRESHOLD, P(object) ~ 1.0
 THRESHOLD = 0.6
 
-NUM_EPOCH = 90
+NUM_EPOCH = 100
 
 STEPS_PER_CKPT = 1
 

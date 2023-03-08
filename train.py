@@ -66,16 +66,29 @@ def train():
                             bounding_box_ph_dict["conf"],
                             bounding_box_ph_dict["coord"])
 
+        batch_size = config.TRAIN_BATCH_SIZE
+        batch_num, last_batch_size = get_batch_num(data, batch_size)
+        print("batch_num: %d, batch_size: %d, last_batch_size: %d" % (batch_num, batch_size, last_batch_size))
+        total_warmup_step = batch_num * config.WARMUP_EPOCH
+
+        global_step_op = tf.Variable(1., trainable=False)
+        if config.USE_WARMUP:
+            lr_op = tf.cond(tf.less(global_step_op, total_warmup_step),
+                            lambda: config.LR_INIT * (global_step_op / total_warmup_step),
+                            lambda: config_lr((global_step_op - total_warmup_step) / batch_num))
+        else:
+            lr_op = config_lr(global_step_op / batch_num)
+        optimizer = get_optimizer(lr_op)
+
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        with tf.control_dependencies(update_ops):
+            grads = optimizer.compute_gradients(loss_op, var_list=tf.trainable_variables())
+            train_op = optimizer.apply_gradients(grads, global_step=global_step_op)
+
+        # call tf.global_variables() here will include global variables defined above, including global_step_op, etc.
+        saver = tf.train.Saver(var_list=tf.global_variables(), max_to_keep=1)
+
     with tf.Session(graph=g, config=cfg) as sess:
-        """
-        # parameters for profiling
-        run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-        run_metadata = tf.RunMetadata()
-        """
-
-        # create saver
-        saver = tf.train.Saver(tf.global_variables(), max_to_keep=1)
-
         ckpt_path = '%s/%s' % (config.CKPT_DIR, config.MODEL_NAME)
         trained_epoch = cal_trained_epoch(config.CKPT_DIR)
         if trained_epoch == -1:
@@ -86,36 +99,18 @@ def train():
             pretrained_model.load_weights("data/weights/%s.h5" % config.pt_net)
         else:
             print("resume from last epoch %d ..." % trained_epoch)
-            # restore will re-initialize global variables with the saved ones
+            # restore will initialize global variables with the saved ones
             saver.restore(sess, "%s-%d" % (ckpt_path, trained_epoch))
 
-        # when start from scratch or resume from the last epoch, or pass a boundary, create a new optimizer
-        prev_lr = -1.0
+        tf.local_variables_initializer().run()
 
+        # start train
         epoch = trained_epoch + 1
         for i in range(epoch, config.NUM_EPOCH):
             print(current_time(), "epoch: %d" % i)
 
-            # learning rate scheduler
-            boundary_idx = get_boundary(i, config.BOUNDARIES)
-            lr = config.LRS[boundary_idx]
-            print("lr: %.7f" % lr)
-            if lr != prev_lr:
-                print("lr: %.7f, prev_lr: %.7f" % (lr, prev_lr))
-                prev_lr = lr
-
-                optimizer = get_optimizer(lr)
-                train_op = optimizer.minimize(loss_op)
-
-                # initialize optimizer variables
-                tf.variables_initializer(optimizer.variables()).run()
-
             # shuffle data
             shuffle_idx = perm(len(data))
-
-            batch_size = config.BATCH_SIZES[boundary_idx]
-            batch_num, last_batch_size = get_batch_num(data, batch_size)
-            print("batch_num: %d, batch_size: %d, last_batch_size: %d" % (batch_num, batch_size, last_batch_size))
             for b in range(batch_num):
                 step = b + 1
 
@@ -123,7 +118,7 @@ def train():
                     batch_size = last_batch_size
 
                 # get data
-                print(current_time(), "batch %d get data starts ..." % step)
+                #print(current_time(), "batch %d get data starts ..." % step)
                 chunks = [data[idx] for idx in shuffle_idx[b * batch_size: (b + 1) * batch_size]]
                 images, bounding_box_dict = batch(config.IMAGE_TRAIN_DIR, chunks)
                 if images is None:
@@ -135,7 +130,7 @@ def train():
                     images = np.transpose(images, [0, 3, 1, 2])
 
                 # train data
-                print(current_time(), "batch %d train data starts ..." % step)
+                #print(current_time(), "batch %d train data starts ..." % step)
 
                 feed_dict = dict()
                 feed_dict[image_ph] = images
@@ -143,21 +138,12 @@ def train():
                     feed_dict[bounding_box_ph_dict[key]] = bounding_box_dict[key]
                 feed_dict[dropout_keep_prob_ph] = config.TRAIN_KEEP_PROB
 
-                _, loss = sess.run([train_op, loss_op], feed_dict=feed_dict)
+                _, loss, global_step, lr = sess.run([train_op, loss_op, global_step_op, lr_op], feed_dict=feed_dict)
 
                 # print train loss message
                 if step % config.STEPS_PER_CKPT == 0:
-                    print(current_time(), "step %d, loss: %.3f" % (step, loss))
+                    print(current_time(), "step %d, loss: %.3f, global_step: %d, lr: %.6f" % (step, loss, global_step, lr))
                     # saver.save(sess, config.CKPT_PATH, global_step=step)
-
-                    """
-                    # profiling
-                    from tensorflow.python.client import timeline
-                    fetched_timeline = timeline.Timeline(run_metadata.step_stats)
-                    chrome_trace = fetched_timeline.generate_chrome_trace_format()
-                    with open("%s/timeline_%d.json" % (config.PROF_DIR, step), 'w') as f:
-                        f.write(chrome_trace)
-                    """
 
             # checkpoint upon each epoch instead of some step during an epoch, for convenient restore
             saver.save(sess, ckpt_path, global_step=i)
@@ -167,6 +153,13 @@ def train():
             save_model(sess, config.MODLE_DIR, config.MODEL_NAME, outputs)
 
     print(current_time(), "Training finished!")
+
+
+def config_lr(epoch):
+    return tf.train.piecewise_constant(tf.cast(epoch, tf.int32),
+                                       boundaries=config.BOUNDARIES,
+                                       values=config.LRS,
+                                       name='piecewise_learning_rate')
 
 
 def cal_trained_epoch(ckpt_dir):
