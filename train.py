@@ -13,7 +13,6 @@ import config
 from utils.voc_parser import parse
 from net.fast_yolo import FastYolo
 
-#from data import shuffle
 from data import get_batch_num, batch
 from utils.misc import current_time, get_optimizer, save_model
 
@@ -80,10 +79,10 @@ def train():
             lr_op = config_lr(global_step_op / batch_num)
         optimizer = get_optimizer(lr_op)
 
-        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        with tf.control_dependencies(update_ops):
-            grads = optimizer.compute_gradients(loss_op, var_list=tf.trainable_variables())
-            train_op = optimizer.apply_gradients(grads, global_step=global_step_op)
+        gvs = optimizer.compute_gradients(loss_op)
+        # apply gradient clip to avoid gradient exploding
+        clip_grad_vars = [gv if gv[0] is None else [tf.clip_by_norm(gv[0], 100.), gv[1]] for gv in gvs]
+        train_op = optimizer.apply_gradients(clip_grad_vars, global_step=global_step_op)
 
         # call tf.global_variables() here will include global variables defined above, including global_step_op, etc.
         saver = tf.train.Saver(var_list=tf.global_variables(), max_to_keep=1)
