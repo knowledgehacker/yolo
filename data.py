@@ -2,7 +2,6 @@
 
 from numpy.random import permutation as perm
 import cv2
-import math
 import numpy as np
 import os
 
@@ -87,19 +86,19 @@ def batch(image_dir, chunks, test=False):
         grid_wh = np.array([1. * resize_w / W, 1. * resize_h / H])
 
         # normalized box center x/y coordinates and width/height to in grid unit
-        box_centers = ((objs[:, 0:2] + objs[:, 2:4]) / 2.) / grid_wh
-        box_sizes = (objs[:, 2:4] - objs[:, 0:2]) / grid_wh
+        box_centers = (objs[:, 0:2] + objs[:, 2:4]) / 2.
+        box_sizes = objs[:, 2:4] - objs[:, 0:2]
+
         anchors = np.reshape(config.anchors, [B, 2])
-        best_match_anchors = find_best_match_anchors(box_sizes, anchors)
+        best_match_anchors = find_best_match_anchors(box_sizes / grid_wh, anchors)
         for i in range(len(best_match_anchors)):
             anchor_index = best_match_anchors[i]
 
-            cx, cy = box_centers[i]
-            grid_cx, grid_cy = int(np.floor(cx)), int(np.floor(cy))
+            grid_cx, grid_cy = np.floor(box_centers[i] / grid_wh).astype(int)
             cls[grid_cy, grid_cx, anchor_index, classes.index(labels[i])] = 1.
             conf[grid_cy, grid_cx, anchor_index, 0] = 1.
-            coord[grid_cy, grid_cx, anchor_index, 0:2] = [cx - grid_cx, cy - grid_cy]
-            coord[grid_cy, grid_cx, anchor_index, 2:4] = np.log(clip_by_value(box_sizes[i] / anchors[anchor_index], 1e-9, 1e9))
+            coord[grid_cy, grid_cx, anchor_index, 0:2] = box_centers[i]
+            coord[grid_cy, grid_cx, anchor_index, 2:4] = box_sizes[i]
 
         # collect regression items
         image_batch.append(img)

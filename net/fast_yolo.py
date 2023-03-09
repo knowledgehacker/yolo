@@ -59,7 +59,7 @@ class FastYolo(object):
         # coord_pred[:, :, :, :, 0:2] is (t_x, t_y)
         coord_pred_xy = tf.sigmoid(coord_pred[:, :, :, :, 0:2])
         # adjusted_coord[:, :, :, :, 2:4] is (t_w, t_h)
-        coord_pred_wh = tf.clip_by_value(coord_pred[:, :, :, :, 2:4], -9, 9)
+        coord_pred_wh = coord_pred[:, :, :, :, 2:4]
         coord_pred = tf.concat([coord_pred_xy, coord_pred_wh], -1)
 
         """
@@ -71,8 +71,7 @@ class FastYolo(object):
 
         # negative samples(bounding boxes with highest iou < threshold)' ground truth confidence is 0
         orig_coord_pred = restore_coord(coord_pred, cell_xy, anchors)
-        orig_coord_gt = restore_coord(nd_coord, cell_xy, anchors)
-        ignore_mask = cal_ignore_mask(batch_size, orig_coord_pred, orig_coord_gt, positive)
+        ignore_mask = cal_ignore_mask(batch_size, orig_coord_pred, nd_coord, positive)
         negative = ignore_mask * (1. - positive)
 
         bce_conf = tf.nn.sigmoid_cross_entropy_with_logits(logits=conf_pred, labels=nd_conf)
@@ -91,12 +90,11 @@ class FastYolo(object):
         use (b_x - c_x, b_y - c_y), (b_w / p_w, b_h / p_h) in coordinate loss, is it correct???
         I think so, (width, height) loss should be irrelevant to anchor size (width, height).
         """
-        # the bigger the box is, the smaller its weight is. the trick to improve detection on small objects???
-        true_wh = tf.exp(nd_coord[:, :, :, :, 2:4]) * anchors
-        # note: true_wh[:, :, :, :, 0:1] is of shape [?, H, W, B, 1], while true_wh[:, :, :, :, 0] is of shape [?, H, W, B]
-        coord_ratio = 2 - (true_wh[:, :, :, :, 0:1] / W) * (true_wh[:, :, :, :, 1:2] / H)
+        # punish the box size, the bigger the box is, the smaller its weight is. the trick to improve detection on small objects???
+        # note: nd_coord[:, :, :, :, 2:3] is of shape [?, H, W, B, 1], while nd_coord[:, :, :, :, 2] is of shape [?, H, W, B]
+        coord_ratio = 2 - (nd_coord[:, :, :, :, 2:3] / config.IMG_W) * (nd_coord[:, :, :, :, 3:4] / config.IMG_H)
 
-        se_coord = (coord_pred - nd_coord) ** 2
+        se_coord = (coord_pred - normalize_coord(nd_coord, cell_xy, anchors)) ** 2
         coord_loss = coord_scale * tf.reduce_sum(se_coord * positive * coord_ratio) / batch_size
 
         # total loss
@@ -121,11 +119,33 @@ def create_cell_xy():
 
 
 def restore_coord(coord, cell_xy, anchors):
-    coord_xy = coord[..., 0:2] + cell_xy
-    coord_wh = tf.exp(coord[..., 2:4]) * anchors
-    adjusted_coord = tf.concat([coord_xy, coord_wh], -1)
+    grid_wh = np.reshape([config.IMG_W / W, config.IMG_H / H], [1, 1, 1, 2])
 
-    return adjusted_coord
+    coord_xy = coord[..., 0:2] + cell_xy
+    coord_xy = coord_xy * grid_wh
+
+    coord_wh = tf.clip_by_value(tf.exp(coord[..., 2:4]), 1e-9, 1e9) * anchors
+    coord_wh = coord_wh * grid_wh
+
+    orig_coord = tf.concat([coord_xy, coord_wh], -1)
+
+    return orig_coord
+
+
+def normalize_coord(coord, cell_xy, anchors):
+    grid_wh = np.reshape([config.IMG_W / W, config.IMG_H / H], [1, 1, 1, 2])
+
+    coord_xy = coord[..., 0:2]
+    coord_xy = (coord_xy / grid_wh) - cell_xy
+
+    coord_wh = coord[..., 2:4]
+    coord_wh = (coord_wh / grid_wh) / anchors
+    #coord_wh = tf.where(condition=tf.equal(coord_wh, 0), x=tf.ones_like(coord_wh), y=coord_wh)
+    coord_wh = tf.log(tf.clip_by_value(coord_wh, 1e-9, 1e9))
+
+    normalized_coord = tf.concat([coord_xy, coord_wh], -1)
+
+    return normalized_coord
 
 
 def box_iou(pred_boxes, valid_true_boxes):

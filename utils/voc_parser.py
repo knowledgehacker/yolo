@@ -43,12 +43,10 @@ def parse(ann_dir, classes, exclusive=False):
         imsize = root.find('size')
         w = int(imsize.find('width').text)
         h = int(imsize.find('height').text)
-        #all = list()
+
         labels = list()
         objs = list()
-
         for obj in root.iter('object'):
-                #current = list()
                 name = obj.find('name').text
                 if name not in classes:
                         continue
@@ -58,12 +56,9 @@ def parse(ann_dir, classes, exclusive=False):
                 xx = int(float(xmlbox.find('xmax').text))
                 yn = int(float(xmlbox.find('ymin').text))
                 yx = int(float(xmlbox.find('ymax').text))
-                #current = [name, xn, yn, xx, yx]
-                # all += [current]
                 labels += [name]
                 objs += [[xn, yn, xx, yx]]
 
-        #add = [[jpg, [w, h, all]]]
         add = [[jpg, [w, h, labels, objs]]]
         dumps += add
         in_file.close()
