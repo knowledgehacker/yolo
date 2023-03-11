@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import config
-from utils.compose import ConvBatchLReLu, ConvBatchLReLu_loop, Conv
+from utils.compose import ConvBatchLReLu, ConvBatchLReLu_loop, Conv, space_to_depth_x2
 from net.darknet19 import DarkNet19
 
 import tensorflow._api.v2.compat.v1 as tf
@@ -13,20 +13,6 @@ from keras.layers import Lambda, concatenate
 
 B = config.B
 C = config.C
-
-
-# the function to implement the orgnization layer (thanks to github.com/allanzelener/YAD2K)
-def space_to_depth_x2(x, data_format, name):
-    if data_format == "channels_first":
-        x = tf.transpose(x, [0, 2, 3, 1])
-
-    x = tf.space_to_depth(x, block_size=2, name=name)
-
-    if data_format == "channels_first":
-        x = tf.transpose(x, [0, 3, 1, 2])
-
-    return x
-    #return tf.space_to_depth(x, block_size=2, data_format=df, name=name)
 
 
 def depth_concat(x, data_format):

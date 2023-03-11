@@ -70,15 +70,21 @@ noobject_scale = 1.0
 class_scale = 1.0
 coord_scale = 1.0
 
+USE_FOCAL_LOSS = True
+ALPHA = 1.0
+GAMMA = 2.0
+
+USE_LABEL_SMOOTH = True
+
 # optimizer
 OPTIMIZER = 'adam'
 
 USE_WARMUP = True
 WARMUP_EPOCH = 3
-LR_INIT = 1e-5
+LR_INIT = 1e-4
 BOUNDARIES = [25, 40]
-LRS = [LR_INIT, 3e-6, 1e-5]
-TRAIN_BATCH_SIZE = 16
+LRS = [LR_INIT, 3e-5, 1e-4]
+TRAIN_BATCH_SIZE = 8
 
 
 TEST_BATCH_SIZE = 1
@@ -105,7 +111,7 @@ else:
     exit(-1)
 
 # P(object) * P(class|object), hope P(class|object) > THRESHOLD, P(object) ~ 1.0
-THRESHOLD = 0.2
+THRESHOLD = 0.01
 
 NUM_EPOCH = 100
 

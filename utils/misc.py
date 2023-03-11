@@ -66,7 +66,7 @@ def save_model(sess, model_dir, model_name, outputs):
         fout.write(output_graph_def.SerializeToString())
 
 
-def get_optimizer(lr, decay=0.9, momentum=0.9):
+def get_optimizer(lr, decay=0.9, momentum=5e-4):
     if config.OPTIMIZER == 'momentum':
         optimizer = tf.train.MomentumOptimizer(learning_rate=lr, momentum=momentum)
     elif config.OPTIMIZER == 'adagrad':
