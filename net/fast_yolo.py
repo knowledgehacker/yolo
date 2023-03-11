@@ -74,15 +74,26 @@ class FastYolo(object):
         ignore_mask = cal_ignore_mask(batch_size, orig_coord_pred, nd_coord, positive)
         negative = ignore_mask * (1. - positive)
 
-        bce_conf = tf.nn.sigmoid_cross_entropy_with_logits(logits=conf_pred, labels=nd_conf)
-        conf_obj_loss = obj_scale * tf.reduce_sum(positive * bce_conf) / batch_size
-        conf_noobj_loss = noobj_scale * tf.reduce_sum(negative * bce_conf) / batch_size
-        conf_loss = conf_obj_loss + conf_noobj_loss
+        bce_conf = tf.nn.sigmoid_cross_entropy_with_logits(labels=nd_conf, logits=conf_pred)
+        conf_obj_loss = positive * bce_conf
+        conf_noobj_loss = negative * bce_conf
+        conf_loss = obj_scale * conf_obj_loss + noobj_scale * conf_noobj_loss
+        # Whether to apply focal loss on the conf loss
+        if config.USE_FOCAL_LOSS:
+            focal_mask = config.ALPHA * tf.pow(tf.abs(positive - tf.sigmoid(conf_pred)), config.GAMMA)
+            conf_loss *= focal_mask
+        conf_loss = tf.reduce_sum(conf_loss) / batch_size
 
         """
         class part, multiply positive to get the positive samples.
         """
-        bce_class = tf.nn.sigmoid_cross_entropy_with_logits(logits=cls_pred, labels=nd_cls)
+        # whether to use label smooth
+        if config.USE_LABEL_SMOOTH:
+            delta = 0.01
+            label_target = (1 - delta) * nd_cls + delta * 1. / C
+        else:
+            label_target = nd_cls
+        bce_class = tf.nn.sigmoid_cross_entropy_with_logits(labels=label_target, logits=cls_pred)
         class_loss = class_scale * tf.reduce_sum(positive * bce_class) / batch_size
 
         """
