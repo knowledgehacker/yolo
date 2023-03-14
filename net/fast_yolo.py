@@ -28,7 +28,10 @@ class FastYolo(object):
         model = Model(input_image, output)
         #model.summary()
 
-        net_out = tf.identity(model.call(image_batch), name="net_out")
+        net_out = model.call(image_batch)
+        if data_format == 'channels_first':
+            net_out = tf.transpose(net_out, [0, 2, 3, 1])
+        net_out = tf.identity(net_out, name="net_out")
 
         return net_out, pretrained_model
 
@@ -107,7 +110,8 @@ class FastYolo(object):
         coord_loss = coord_scale * tf.reduce_sum(se_coord * positive * coord_ratio) / batch_size
 
         # total loss
-        loss_op = tf.add_n([conf_loss, class_loss, coord_loss], name="loss")
+        total_loss = conf_loss + class_loss + coord_loss
+        loss_op = tf.identity(total_loss, name="loss")
 
         return loss_op
 
