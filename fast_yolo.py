@@ -30,6 +30,8 @@ class FastYolo(object):
         class_scale = config.class_scale
         print('scales  = {}'.format([coord_scale, noobj_scale, class_scale]))
 
+        batch_size = tf.shape(net_out)[0]
+
         """
         The following code calculate weight vector of three parts: class, coordinate, confidence,
         initial weight vector is passed from input, we adjust it by scale parameters and best box with highest iou.
@@ -74,7 +76,8 @@ class FastYolo(object):
         true = tf.concat([flat(nd_class_probs), flat(nd_confids), flat(nd_coords)], 1)
         weights = tf.concat([flat(nd_class_weight), flat(nd_confid_weight), flat(nd_coord_weight)], 1)
         weighted_square_error = weights * ((net_out - true) ** 2)
-        loss_op = 0.5 * tf.reduce_mean(tf.reduce_sum(weighted_square_error, 1), name="loss")
+        loss = tf.reduce_sum(weighted_square_error, 1) / batch_size
+        loss_op = tf.identity(loss, name="loss")
 
         return loss_op
 

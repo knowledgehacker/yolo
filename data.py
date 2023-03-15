@@ -89,8 +89,8 @@ def batch(image_dir, chunks, test=False):
         proid = np.zeros([S*S, C])
 
         # Calculate regression target, normalize the items in the loss formula
-        grid_w = 1. * w / S
-        grid_h = 1. * h / S
+        grid_w = 1. * config.IMG_W / S
+        grid_h = 1. * config.IMG_H / S
 
         for obj in allobj:
             # centrex = 1/2 * (xmin + xmax), centrey = 1/2 * (ymin + ymax)

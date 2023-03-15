@@ -91,6 +91,9 @@ class DarkNet(object):
 
         # model.summary()
 
-        net_out = tf.identity(model.call(image_batch), name="net_out")
+        net_out = model.call(image_batch)
+        if config.DEVICE_TYPE == "gpu":
+            net_out = tf.transpose(net_out, [0, 2, 3, 1])
+        net_out = tf.identity(net_out, name="net_out")
 
         return net_out
