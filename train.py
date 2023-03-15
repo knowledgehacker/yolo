@@ -52,7 +52,7 @@ def train():
 
         #To be able to feed with batches of different size, the first dimension should be None
         image_ph = tf.placeholder(dtype=tf.float32, shape=config.placeholder_image_shape, name="image_ph")
-        bounding_box_ph_dict = {
+        box_ph_dict = {
             "cls": tf.placeholder(dtype=tf.float32, shape=(None, H, W, B, C), name="cls_ph"),
             "conf": tf.placeholder(dtype=tf.float32, shape=(None, H, W, B, 1), name="conf_ph"),
             "coord": tf.placeholder(dtype=tf.float32, shape=(None, H, W, B, 4), name="coord_ph")
@@ -61,9 +61,7 @@ def train():
 
         net_out_op, pretrained_model = model.forward(image_ph, config.input_shape, config.data_format,
                                                      dropout_keep_prob_ph, True)
-        loss_op = model.opt(net_out_op, bounding_box_ph_dict["cls"],
-                            bounding_box_ph_dict["conf"],
-                            bounding_box_ph_dict["coord"])
+        loss_op = model.opt(net_out_op, box_ph_dict["cls"], box_ph_dict["conf"], box_ph_dict["coord"])
 
         batch_size = config.TRAIN_BATCH_SIZE
         batch_num, last_batch_size = get_batch_num(data, batch_size)
@@ -119,7 +117,7 @@ def train():
                 # get data
                 #print(current_time(), "batch %d get data starts ..." % step)
                 chunks = [data[idx] for idx in shuffle_idx[b * batch_size: (b + 1) * batch_size]]
-                images, bounding_box_dict = batch(config.IMAGE_TRAIN_DIR, chunks)
+                images, box_dict = batch(config.IMAGE_TRAIN_DIR, chunks)
                 if images is None:
                     print(current_time(), "batch %d skipped!" % step)
                     continue
@@ -133,8 +131,8 @@ def train():
 
                 feed_dict = dict()
                 feed_dict[image_ph] = images
-                for key in bounding_box_ph_dict:
-                    feed_dict[bounding_box_ph_dict[key]] = bounding_box_dict[key]
+                for key in box_ph_dict:
+                    feed_dict[box_ph_dict[key]] = box_dict[key]
                 feed_dict[dropout_keep_prob_ph] = config.TRAIN_KEEP_PROB
 
                 _, loss, global_step, lr = sess.run([train_op, loss_op, global_step_op, lr_op], feed_dict=feed_dict)

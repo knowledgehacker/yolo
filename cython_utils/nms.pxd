@@ -5,6 +5,6 @@ ctypedef np.float_t DTYPE_t
 from libc.math cimport exp
 
 
-cdef NMS(float[:, ::1] , float[:, ::1] )
+cdef NMS(float[:, ::1], float[:, ::1], float)
 
 

@@ -50,7 +50,7 @@ cdef void _softmax_c(float* x, int classes):
 @cython.cdivision(True)
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
-def box_constructor(meta,np.ndarray[float,ndim=3] net_out_in, float threshold):
+def box_constructor(meta,np.ndarray[float,ndim=3] net_out_in, float threshold, float iou_threshold):
     cdef:
         np.intp_t H, W, BxCCC, C, B, row, col, box_loop, class_loop
         np.intp_t row1, col1, box_loop1,index,index2
@@ -73,15 +73,17 @@ def box_constructor(meta,np.ndarray[float,ndim=3] net_out_in, float threshold):
             for box_loop in range(B):
                 arr_max=0
                 sum=0;
-                Bbox_pred[row, col, box_loop, 0] = expit_c(Bbox_pred[row, col, box_loop, 0])
-                Bbox_pred[row, col, box_loop, 1] = (col + expit_c(Bbox_pred[row, col, box_loop, 1])) / W # center_x / image_w
-                Bbox_pred[row, col, box_loop, 2] = (row + expit_c(Bbox_pred[row, col, box_loop, 2])) / H # center_y / image_h
-                Bbox_pred[row, col, box_loop, 3] = exp(Bbox_pred[row, col, box_loop, 3]) * anchors[2 * box_loop + 0] / W # w / image_w
-                Bbox_pred[row, col, box_loop, 4] = exp(Bbox_pred[row, col, box_loop, 4]) * anchors[2 * box_loop + 1] / H # h / image_h
+
+                pred_conf = expit_c(Bbox_pred[row, col, box_loop, 0])
+                Bbox_pred[row, col, box_loop, 0] = pred_conf
+                Bbox_pred[row, col, box_loop, 1] = (col + expit_c(Bbox_pred[row, col, box_loop, 1])) / W # ratio in grid
+                Bbox_pred[row, col, box_loop, 2] = (row + expit_c(Bbox_pred[row, col, box_loop, 2])) / H # ratio in grid
+                Bbox_pred[row, col, box_loop, 3] = exp(Bbox_pred[row, col, box_loop, 3]) * anchors[2 * box_loop + 0] / W # ratio in grid
+                Bbox_pred[row, col, box_loop, 4] = exp(Bbox_pred[row, col, box_loop, 4]) * anchors[2 * box_loop + 1] / H # ratio in grid
                 for class_loop in range(C):
-                    tempc = expit_c(Classes[row, col, box_loop, class_loop]) * Bbox_pred[row, col, box_loop, 0]
+                    tempc = expit_c(Classes[row, col, box_loop, class_loop]) * pred_conf
                     if(tempc > threshold):
                         probs[row, col, box_loop, class_loop] = tempc
     
     #NMS                    
-    return NMS(np.ascontiguousarray(probs).reshape(H*W*B,C), np.ascontiguousarray(Bbox_pred).reshape(H*W*B,5))
+    return NMS(np.ascontiguousarray(probs).reshape(H*W*B,C), np.ascontiguousarray(Bbox_pred).reshape(H*W*B,5), iou_threshold)

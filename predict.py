@@ -37,8 +37,7 @@ def find_boxes(net_out):
 		"num": config.B,
 		"out_size": (config.H, config.W, config.B * (config.C + 1 + 4))
 	}
-	threshold = config.THRESHOLD
-	boxes = box_constructor(meta, net_out, threshold)
+	boxes = box_constructor(meta, net_out, config.THRESHOLD, config.IOU_THRESHOLD)
 
 	return boxes
 
@@ -75,6 +74,7 @@ def draw_detection_on_image(image_file, net_out, save=True):
 		return image
 
 	image_file_name = os.path.basename(image_file)
+	print("image_file_name: %s" % image_file_name)
 	image_file = os.path.join(config.IMAGE_OUT_DIR, image_file_name)
 	cv2.imwrite(image_file, image)
 

@@ -18,11 +18,11 @@ VOC2012_2007_DIR = '%s/%s' % (DATA_DIR, 'VOC2012')
 ANNOTATION_TRAIN_DIR = '/content/%s/train/Annotations' % VOC2012_2007_DIR
 IMAGE_TRAIN_DIR = '/content/%s/train/JPEGImages' % VOC2012_2007_DIR
 
-"""
+
 # kaggle
 ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % VOC2012_2007_DIR
 IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % VOC2012_2007_DIR
-"""
+
 
 #ANNOTATION_TRAIN_DIR = 'data/tmp/Annotations'
 #IMAGE_TRAIN_DIR = 'data/tmp/JPEGImages'
@@ -79,34 +79,22 @@ USE_LABEL_SMOOTH = False
 # optimizer
 OPTIMIZER = 'adam'
 
-"""
 # fine-tune on voc dataset using yolov3.weights pretrained on coco dataset
 # https://github.com/wizyoung/YOLOv3_TensorFlow/blob/master/misc/experiments_on_voc/args_voc.py
-NUM_EPOCH = 32
+NUM_EPOCH = 100
 
 USE_WARMUP = True
 WARMUP_EPOCH = 3
 LR_INIT = 1e-4
-BOUNDARIES = [25, 40]
+BOUNDARIES = [20, 40]
 LRS = [LR_INIT, 3e-5, 1e-4]
 TRAIN_BATCH_SIZE = 8
-"""
 
-# train on voc dataset from scratch(using pretrained darknet19 on imagenet)
-# https://github.com/pjreddie/darknet/blob/master/cfg/yolov3-voc.cfg
-NUM_EPOCH = 145
-
-USE_WARMUP = True
-WARMUP_EPOCH = 3
-LR_INIT = 1e-3
-BOUNDARIES = [115, 130]
-LRS = [LR_INIT, 1e-4, 1e-5]
-TRAIN_BATCH_SIZE = 40
 
 TEST_BATCH_SIZE = 1
 
 # P(object) * P(class|object), hope P(class|object) > THRESHOLD, P(object) ~ 1.0
-THRESHOLD = 0.01
+THRESHOLD = 0.2
 
 # pretrain network
 pt_net = "darknet19_448"

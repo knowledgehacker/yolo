@@ -61,29 +61,29 @@ cdef float box_iou_c(float ax, float ay, float aw, float ah, float bx, float by,
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
 @cython.cdivision(True)
-cdef NMS(float[:, ::1] final_probs , float[:, ::1] final_bbox):
+cdef NMS(float[:, ::1] final_probs , float[:, ::1] final_bbox, float iou_threshold):
     cdef list boxes = list()
     cdef set indices = set()
     cdef:
-        np.intp_t pred_length,class_length,class_loop,index,index2
+        np.intp_t hwb,c,cls,index,index2
 
     # TODO: handle the multiple label case
-    pred_length = final_bbox.shape[0]
-    class_length = final_probs.shape[1]
-    for class_loop in range(class_length):
-        for index in range(pred_length):
-            if final_probs[index,class_loop] == 0: continue
-            for index2 in range(index+1,pred_length):
-                if final_probs[index2,class_loop] == 0: continue
+    hwb = final_bbox.shape[0]
+    c = final_probs.shape[1]
+    for cls in range(c):
+        for index in range(hwb):
+            if final_probs[index,cls] == 0: continue
+            for index2 in range(index+1, hwb):
+                if final_probs[index2, cls] == 0: continue
                 if index==index2 : continue
-                if box_iou_c(final_bbox[index,0],final_bbox[index,1],final_bbox[index,2],final_bbox[index,3],final_bbox[index2,0],final_bbox[index2,1],final_bbox[index2,2],final_bbox[index2,3]) >= 0.4:
-                    if final_probs[index2,class_loop] > final_probs[index, class_loop] :
-                        final_probs[index, class_loop] =0
+                if box_iou_c(final_bbox[index,0],final_bbox[index,1],final_bbox[index,2],final_bbox[index,3],final_bbox[index2,0],final_bbox[index2,1],final_bbox[index2,2],final_bbox[index2,3]) >= iou_threshold:
+                    if final_probs[index2, cls] > final_probs[index, cls] :
+                        final_probs[index, cls] =0
                         break
-                    final_probs[index2,class_loop]=0
+                    final_probs[index2, cls]=0
             
             if index not in indices:
-                bb=BoundBox(class_length)
+                bb=BoundBox(c)
                 bb.x = final_bbox[index, 1]
                 bb.y = final_bbox[index, 2]
                 bb.w = final_bbox[index, 3]

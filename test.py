@@ -41,7 +41,7 @@ def test():
         """
 
         image_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "image_ph:0"))
-        bounding_box_ph_dict = {
+        box_ph_dict = {
             "cls": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "cls_ph:0")),
             "conf": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "conf_ph:0")),
             "coord": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "coord_ph:0"))
@@ -64,7 +64,7 @@ def test():
             # get data
             print(current_time(), "batch %d get data starts ..." % step)
             chunks = [data[idx] for idx in range(b * batch_size, (b + 1) * batch_size)]
-            images, bounding_box_dict = batch(config.IMAGE_TEST_DIR, chunks, test=True)
+            images, box_dict = batch(config.IMAGE_TEST_DIR, chunks, test=True)
             if images is None:
                 print(current_time(), "batch %d skipped!" % step)
                 continue
@@ -76,8 +76,8 @@ def test():
             #print(current_time(), "batch %d forward starts ..." % step)
             feed_dict = dict()
             feed_dict[image_ph] = images
-            for key in bounding_box_ph_dict:
-                feed_dict[bounding_box_ph_dict[key]] = bounding_box_dict[key]
+            for key in box_ph_dict:
+                feed_dict[box_ph_dict[key]] = box_dict[key]
             #feed_dict[dropout_keep_prob_ph] = config.TEST_KEEP_PROB
 
             net_outs, loss = sess.run([net_out_op, loss_op], feed_dict=feed_dict)
