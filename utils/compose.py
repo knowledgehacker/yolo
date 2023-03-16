@@ -3,7 +3,7 @@
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()
 
-from keras.layers import Conv2D, MaxPool2D, Dense, BatchNormalization, LeakyReLU
+from keras.layers import Conv2D, MaxPool2D, Dense, BatchNormalization, LeakyReLU, concatenate
 from keras.regularizers import l2
 
 
@@ -66,3 +66,12 @@ def space_to_depth_x2(x, data_format, name):
 
     return x
     #return tf.space_to_depth(x, block_size=2, data_format=df, name=name)
+
+
+def depth_concat(x, data_format):
+    axis = -1
+    if data_format == "channels_first":
+        axis = 1
+
+    return concatenate(x, axis=axis)
+    #return tf.concat(x, axis=axis)

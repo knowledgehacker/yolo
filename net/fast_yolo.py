@@ -3,13 +3,14 @@
 import numpy as np
 
 import config
-from net.small import Small
+from utils.compose import ConvBatchLReLu, ConvBatchLReLu_loop, Conv, space_to_depth_x2, depth_concat
+from net.darknet19 import DarkNet19
 
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()
 
 from keras.models import Model
-from keras.layers import Input
+from keras.layers import Input, Lambda
 
 H, W = config.H, config.W
 B = config.B
@@ -19,15 +20,49 @@ C = config.C
 class FastYolo(object):
     def __init__(self):
         #print("FastYolo")
-        self.net = Small()
+        self.net = DarkNet19()
 
     def forward(self, image_batch, input_shape, data_format, dropout_keep_prob, trainable=True):
         input_image = Input(shape=input_shape, name="input_image")
-        output, pretrained_model, _ = self.net.build(input_image, data_format, dropout_keep_prob, trainable)
+
+        net_output = self.net.build(input_image, data_format, dropout_keep_prob, trainable)
+        pretrained_model = Model(inputs=input_image, outputs=net_output)
+        #pretrained_model.summary()
+
+        layer_13 = pretrained_model.get_layer("relu_13")
+        layer_13_output = layer_13.output
+
+        layer_18 = pretrained_model.get_layer("relu_18")
+        layer_18_output = layer_18.output
+
+        # yolo head
+        padding_mode = 'same'
+
+        # Layer 19 - 20
+        convs = [(1024, 3, 1), (1024, 3, 1)]
+        x = ConvBatchLReLu_loop(layer_18_output, convs, padding_mode, data_format, 19, trainable) # (?, 1024, 13, 13) in NCHW?
+
+        # reorg layer
+        """
+        reorg_layer reorganizes the output from conv13 as the shape of conv20.
+        Then the second route layer will concat the two output together. Its function is mostly shape transform.
+
+        tf.space_to_depth converts conv13(?, 512, 26, 26) to (?, 512 * block_size * block_size, 26 / block_size, 26 / block_size).
+        to be able to concatenate with conv20(?, 1024, 13, 13), block_size = 2, that is what space_to_depth_x2 does.
+        """
+        passthrough = Lambda(space_to_depth_x2, arguments={"data_format": data_format, "name": "reorg"})(layer_13_output)
+        #passthrough = space_to_depth_x2(layer_13_output, data_format, "reorg")  # (?, 2048, 13, 13) in NCHW?
+
+        x = depth_concat([passthrough, x], data_format)
+
+        # Layer 21
+        x = ConvBatchLReLu(x, 1024, 3, 1, padding_mode, data_format, 21, trainable)
+
+        # layer 22, use bias
+        output = Conv(x, B * (C + 1 + 4), 1, 1, padding_mode, data_format, 22, trainable)
 
         model = Model(input_image, output)
         #model.summary()
-
         net_out = model.call(image_batch)
         if data_format == 'channels_first':
             net_out = tf.transpose(net_out, [0, 2, 3, 1])
