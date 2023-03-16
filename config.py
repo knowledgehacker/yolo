@@ -94,7 +94,7 @@ TRAIN_BATCH_SIZE = 8
 TEST_BATCH_SIZE = 1
 
 # P(object) * P(class|object), hope P(class|object) > THRESHOLD, P(object) ~ 1.0
-THRESHOLD = 0.2
+THRESHOLD = 0.01
 
 # pretrain network
 pt_net = "darknet19_448"
@@ -103,7 +103,7 @@ pt_net = "darknet19_448"
 # https://github.com/pjreddie/darknet/blob/master/cfg/yolov2-voc.cfg
 anchors = [1.32, 1.73, 3.19, 4.01, 5.05, 8.10, 9.47, 4.84, 11.23, 10.01]
 
-IOU_THRESHOLD = 0.5
+IOU_THRESHOLD = 0.45
 
 if DEVICE_TYPE == "gpu":
     data_format = "channels_first"
