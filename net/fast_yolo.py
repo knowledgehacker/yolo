@@ -1,9 +1,4 @@
-# -*- coding: utf-8 -*-
-
-import numpy as np
-
-import config
-from net.small import Small
+# coding=utf-8
 
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()
@@ -11,222 +6,180 @@ tf.disable_v2_behavior()
 from keras.models import Model
 from keras.layers import Input
 
-H, W = config.H, config.W
+import config
+from net.darknet53 import DarkNet53
+from utils.layer import conv2d, yolo_block, upsample_layer, concatenate
+from utils.box import restore_coord, cal_iou
+
 B = config.B
 C = config.C
 
 
 class FastYolo(object):
     def __init__(self):
-        #print("FastYolo")
-        self.net = Small()
+        # print("FastYolo")
+        self.net = DarkNet53()
 
-    def forward(self, image_batch, input_shape, data_format, dropout_keep_prob, trainable=True):
-        input_image = Input(shape=input_shape, name="input_image")
-        output, pretrained_model, _ = self.net.build(input_image, data_format, dropout_keep_prob, trainable)
-
-        model = Model(input_image, output)
-        #model.summary()
-
-        net_out = model.call(image_batch)
+    def forward(self, image_batch, input_shape, data_format, is_training=False, reuse=False):
+        self.img_size = tf.shape(image_batch)[1:3]
         if data_format == 'channels_first':
-            net_out = tf.transpose(net_out, [0, 2, 3, 1])
-        net_out = tf.identity(net_out, name="net_out")
+            self.img_size = tf.shape(image_batch)[2:4]
 
-        return net_out, pretrained_model
+        input_image = Input(shape=input_shape, name="input_image")
 
-    """
-    reference to loss_layer in wizyoung/YOLOv3_TensorFlow/model.py
-    https://github.com/wizyoung/YOLOv3_TensorFlow/blob/8776cf7b2531cae83f5fc730f3c70ae97919bfd6/model.py#L192
-    """
-    def opt(self, net_out, nd_cls, nd_conf, nd_coord):
-        # parameters
-        class_scale = config.class_scale
-        obj_scale = config.object_scale
-        noobj_scale = config.noobject_scale
-        coord_scale = config.coord_scale
-        print('scales  = {}'.format([class_scale, obj_scale, noobj_scale, coord_scale]))
+        with tf.variable_scope('darknet53_body'):
+            route_1, route_2, route_3 = self.net.build(input_image, data_format, trainable=is_training)
+            pretrained_model = Model(inputs=input_image, outputs=[route_1, route_2, route_3])
 
-        batch_size = tf.cast(tf.shape(net_out)[0], tf.float32)
+        with tf.variable_scope('yolov3_head'):
+            feature_map_out_size = B * (4 + 1 + C)
 
-        # shape of [H, W, B, 2] instead of [?, H, W, B, 2]
-        anchors = np.reshape(config.anchors, [1, 1, B, 2])
-        # shape of [H, W, B, 2] instead of [?, H, W, B, 2]
-        cell_xy = tf.concat(B * [create_cell_xy()], 2)
+            inter1, net = yolo_block(route_3, 512, data_format, trainable=is_training)
+            feature_map_1 = conv2d(net, feature_map_out_size, 1, 1, data_format, trainable=is_training)
+            if data_format == 'channels_first':
+                feature_map_1 = tf.transpose(feature_map_1, [0, 2, 3, 1])
+            feature_map_1 = tf.identity(feature_map_1, name='feature_map_1')
 
-        # handle net output feature map
-        nd_net_out = tf.reshape(net_out, [-1, H, W, B, (C + 1 + 4)])
+            inter1 = conv2d(inter1, 256, 1, 1, data_format, trainable=is_training)
+            #inter1 = upsample_layer(inter1, route_2.get_shape().as_list() if self.use_static_shape else tf.shape(route_2))
+            inter1 = upsample_layer(inter1, 2, data_format)
+            concat1 = concatenate(inter1, route_2, data_format)
 
-        cls_pred, conf_pred, coord_pred = tf.split(nd_net_out, [C, 1, 4], axis=-1)
+            inter2, net = yolo_block(concat1, 256, data_format, trainable=is_training)
+            feature_map_2 = conv2d(net, feature_map_out_size, 1, 1, data_format, trainable=is_training)
+            if data_format == 'channels_first':
+                feature_map_2 = tf.transpose(feature_map_2, [0, 2, 3, 1])
+            feature_map_2 = tf.identity(feature_map_2, name='feature_map_2')
 
-        # coord_pred[:, :, :, :, 0:2] is (t_x, t_y)
-        coord_pred_xy = tf.sigmoid(coord_pred[:, :, :, :, 0:2])
-        # adjusted_coord[:, :, :, :, 2:4] is (t_w, t_h)
-        coord_pred_wh = coord_pred[:, :, :, :, 2:4]
-        coord_pred = tf.concat([coord_pred_xy, coord_pred_wh], -1)
+            inter2 = conv2d(inter2, 128, 1, 1, data_format, trainable=is_training)
+            #inter2 = upsample_layer(inter2, route_1.get_shape().as_list() if self.use_static_shape else tf.shape(route_1))
+            inter2 = upsample_layer(inter2, 2, data_format)
+            concat2 = concatenate(inter2, route_1, data_format)
 
-        """
-        confidence part, some samples are neither positive nor negative ones
-        (the boxes with highest iou >= threshold, but not responsible for detection on any ground truth object).
-        """
-        # positive samples(bounding boxes with the highest iou)' ground truth confidence is iou
-        positive = nd_conf
+            _, net = yolo_block(concat2, 128, data_format, trainable=is_training)
+            feature_map_3 = conv2d(net, feature_map_out_size, 1, 1, data_format, trainable=is_training)
+            if data_format == 'channels_first':
+                feature_map_3 = tf.transpose(feature_map_3, [0, 2, 3, 1])
+            feature_map_3 = tf.identity(feature_map_3, name='feature_map_3')
 
-        # negative samples(bounding boxes with highest iou < threshold)' ground truth confidence is 0
-        orig_coord_pred = restore_coord(coord_pred, cell_xy, anchors)
-        ignore_mask = cal_ignore_mask(batch_size, orig_coord_pred, nd_coord, positive)
-        negative = ignore_mask * (1. - positive)
+            model = Model(inputs=input_image, outputs=[feature_map_1, feature_map_2, feature_map_3])
+            feature_maps = model.call(image_batch)
 
-        bce_conf = tf.nn.sigmoid_cross_entropy_with_logits(labels=nd_conf, logits=conf_pred)
-        conf_obj_loss = positive * bce_conf
-        conf_noobj_loss = negative * bce_conf
-        conf_loss = obj_scale * conf_obj_loss + noobj_scale * conf_noobj_loss
-        # Whether to apply focal loss on the conf loss
+        return feature_maps, pretrained_model
+
+    def cal_loss(self, feature_map_i, y_true, anchors):
+        '''
+        calc loss function from a certain scale
+        input:
+            feature_map_i: feature maps of a certain scale. shape: [N, 13, 13, 3*(5 + num_class)] etc.
+            y_true: y_ture from a certain scale. shape: [N, 13, 13, 3, 5 + num_class + 1] etc.
+            anchors: shape [9, 2]
+        '''
+
+        batch_size = tf.cast(tf.shape(feature_map_i)[0], tf.float32)
+
+        # size in [h, w] format! don't get messed up!
+        grid_size = tf.shape(feature_map_i)[1:3]
+        # the downscale ratio in height and weight
+        ratio = tf.cast(self.img_size / grid_size, tf.float32)
+
+        # pred_boxes = {xy = (sigmoid(txy) + xy_offset) * ratio, wh = (exp(twh) * anchor)}
+        xy_offset, pred_boxes, pred_conf_logits, pred_prob_logits = restore_coord(feature_map_i, anchors, ratio)
+
+        # shape: take 416x416 input image and 13*13 feature_map for example:
+        object_mask = y_true[..., 4:5]
+        ignore_mask = self.cal_ignore_mask(batch_size, y_true[..., 0:4], pred_boxes, object_mask)
+
+        # sigmoid(tx/ty)
+        true_xy = y_true[..., 0:2] / ratio[::-1] - xy_offset
+        pred_xy = pred_boxes[..., 0:2] / ratio[::-1] - xy_offset
+
+        # tw/th
+        true_wh = y_true[..., 2:4] / anchors
+        pred_wh = pred_boxes[..., 2:4] / anchors
+        # for numerical stability
+        true_wh = tf.where(condition=tf.equal(true_wh, 0), x=tf.ones_like(true_wh), y=true_wh)
+        pred_wh = tf.where(condition=tf.equal(pred_wh, 0), x=tf.ones_like(pred_wh), y=pred_wh)
+        true_wh = tf.log(tf.clip_by_value(true_wh, 1e-9, 1e9))
+        pred_wh = tf.log(tf.clip_by_value(pred_wh, 1e-9, 1e9))
+
+        # box size punishment: box with smaller area has bigger weight. from the yolo darknet C source code.
+        box_loss_scale = 2. - (y_true[..., 2:3] / tf.cast(self.img_size[1], tf.float32)) * (
+                    y_true[..., 3:4] / tf.cast(self.img_size[0], tf.float32))
+
+        """ loss_part """
+        xy_loss = tf.reduce_sum(tf.square(true_xy - pred_xy) * object_mask * box_loss_scale) / batch_size
+        wh_loss = tf.reduce_sum(tf.square(true_wh - pred_wh) * object_mask * box_loss_scale) / batch_size
+
+        # shape: [N, 13, 13, 3, 1]
+        conf_pos_mask = object_mask
+        conf_neg_mask = (1 - object_mask) * ignore_mask
+        conf_loss_pos = conf_pos_mask * tf.nn.sigmoid_cross_entropy_with_logits(labels=object_mask, logits=pred_conf_logits)
+        conf_loss_neg = conf_neg_mask * tf.nn.sigmoid_cross_entropy_with_logits(labels=object_mask, logits=pred_conf_logits)
+        # TODO: may need to balance the pos-neg by multiplying some weights
+        conf_loss = conf_loss_pos + conf_loss_neg
         if config.USE_FOCAL_LOSS:
-            focal_mask = config.ALPHA * tf.pow(tf.abs(positive - tf.sigmoid(conf_pred)), config.GAMMA)
+            # TODO: alpha should be a mask array if needed
+            focal_mask = config.ALPHA * tf.pow(tf.abs(object_mask - tf.sigmoid(pred_conf_logits)), config.GAMMA)
             conf_loss *= focal_mask
         conf_loss = tf.reduce_sum(conf_loss) / batch_size
 
-        """
-        class part, multiply positive to get the positive samples.
-        """
         # whether to use label smooth
         if config.USE_LABEL_SMOOTH:
             delta = 0.01
-            label_target = (1 - delta) * nd_cls + delta * 1. / C
+            label_target = (1 - delta) * y_true[..., 5:] + delta * 1. / C
         else:
-            label_target = nd_cls
-        bce_class = tf.nn.sigmoid_cross_entropy_with_logits(labels=label_target, logits=cls_pred)
-        class_loss = class_scale * tf.reduce_sum(positive * bce_class) / batch_size
+            label_target = y_true[..., 5:]
+        class_loss = object_mask * tf.nn.sigmoid_cross_entropy_with_logits(labels=label_target, logits=pred_prob_logits)
+        class_loss = tf.reduce_sum(class_loss) / batch_size
 
-        """
-        coordinate part, multiply positive to get the positive samples.
-        """
-        # punish the box size, the bigger the box is, the smaller its weight is. the trick to improve detection on small objects???
-        # note: nd_coord[:, :, :, :, 2:3] is of shape [?, H, W, B, 1], while nd_coord[:, :, :, :, 2] is of shape [?, H, W, B]
-        coord_ratio = 2 - (nd_coord[:, :, :, :, 2:3] / config.IMG_W) * (nd_coord[:, :, :, :, 3:4] / config.IMG_H)
+        return xy_loss, wh_loss, conf_loss, class_loss
 
-        se_coord = (coord_pred - normalize_coord(nd_coord, cell_xy, anchors)) ** 2
-        coord_loss = coord_scale * tf.reduce_sum(se_coord * positive * coord_ratio) / batch_size
+    # calculation of ignore mask, reference to https://github.com/pjreddie/darknet/blob/master/src/yolo_layer.c#L179
+    def cal_ignore_mask(self, batch_size, coord_pred, coord_gt, positive):
+        ignore_mask = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
 
-        # total loss
-        total_loss = conf_loss + class_loss + coord_loss
-        loss_op = tf.identity(total_loss, name="loss")
+        def loop_cond(idx, ignore_mask):
+            return tf.less(idx, tf.cast(batch_size, tf.int32))
 
-        return loss_op
+        def loop_body(idx, ignore_mask):
+            # shape: [H, W, B, 4] & [H, W, B]  ==>  [V, 4]
+            # V: num of true gt box of each image in a batch
+            valid_true_boxes = tf.boolean_mask(coord_gt[idx], tf.cast(positive[idx, ..., 0], 'bool'))
+            # shape: [H, W, B, 4] & [V, 4] ==> [H, W, B, V]
+            iou = cal_iou(coord_pred[idx], valid_true_boxes)
+            # shape: [H, W, B]
+            best_iou = tf.reduce_max(iou, axis=-1)
+            # shape: [H, W, B]
+            ignore_mask_tmp = tf.cast(best_iou < config.IOU_THRESHOLD, tf.float32)
+            # finally will be shape: [?, H, W, B]
+            ignore_mask = ignore_mask.write(idx, ignore_mask_tmp)
+            return idx + 1, ignore_mask
 
+        _, ignore_mask = tf.while_loop(cond=loop_cond, body=loop_body, loop_vars=[0, ignore_mask])
+        ignore_mask = ignore_mask.stack()
+        # shape: [?, H, W, B, 1]
+        ignore_mask = tf.expand_dims(ignore_mask, -1)
 
-def create_cell_xy():
-    # use some broadcast tricks to get the mesh coordinates
-    h, w = config.H, config.W
+        return ignore_mask
 
-    grid_x = tf.range(w, dtype=tf.int32)
-    grid_y = tf.range(h, dtype=tf.int32)
-    grid_x, grid_y = tf.meshgrid(grid_x, grid_y)
-    x_offset = tf.reshape(grid_x, (-1, 1))
-    y_offset = tf.reshape(grid_y, (-1, 1))
-    x_y_offset = tf.concat([x_offset, y_offset], axis=-1)
-    x_y_offset = tf.cast(tf.reshape(x_y_offset, [h, w, 1, 2]), tf.float32)
+    def opt(self, y_pred, y_true):
+        '''
+        param:
+            y_pred: returned feature_map list by `forward` function: [feature_map_1, feature_map_2, feature_map_3]
+            y_true: input ground true boxes
+        '''
+        loss_xy, loss_wh, loss_conf, loss_class = 0., 0., 0., 0.
+        anchor_group = [config.anchors[6:9], config.anchors[3:6], config.anchors[0:3]]
 
-    return x_y_offset
+        # calc loss in 3 scales
+        for i in range(len(y_pred)):
+            result = self.cal_loss(y_pred[i], y_true[i], anchor_group[i])
+            loss_xy += result[0]
+            loss_wh += result[1]
+            loss_conf += result[2]
+            loss_class += result[3]
+        total_loss = loss_xy + loss_wh + loss_conf + loss_class
+        total_loss = tf.identity(total_loss, name='loss')
 
-
-def restore_coord(coord, cell_xy, anchors):
-    grid_wh = np.reshape([config.IMG_W / W, config.IMG_H / H], [1, 1, 1, 2])
-
-    coord_xy = coord[..., 0:2] + cell_xy
-    coord_xy = coord_xy * grid_wh
-
-    coord_wh = tf.clip_by_value(tf.exp(coord[..., 2:4]), 1e-9, 1e9) * anchors
-    coord_wh = coord_wh * grid_wh
-
-    orig_coord = tf.concat([coord_xy, coord_wh], -1)
-
-    return orig_coord
-
-
-def normalize_coord(coord, cell_xy, anchors):
-    grid_wh = np.reshape([config.IMG_W / W, config.IMG_H / H], [1, 1, 1, 2])
-
-    coord_xy = coord[..., 0:2]
-    coord_xy = (coord_xy / grid_wh) - cell_xy
-
-    coord_wh = coord[..., 2:4]
-    coord_wh = (coord_wh / grid_wh) / anchors
-    #coord_wh = tf.where(condition=tf.equal(coord_wh, 0), x=tf.ones_like(coord_wh), y=coord_wh)
-    coord_wh = tf.log(tf.clip_by_value(coord_wh, 1e-9, 1e9))
-
-    normalized_coord = tf.concat([coord_xy, coord_wh], -1)
-
-    return normalized_coord
-
-
-def box_iou(pred_boxes, valid_true_boxes):
-    """
-    param:
-        pred_boxes: [13, 13, 3, 4], (center_x, center_y, w, h)
-        valid_true_boxes: [V, 4]
-    """
-
-    # [H, W, B, 2]
-    pred_box_xy = pred_boxes[..., 0:2]
-    pred_box_wh = pred_boxes[..., 2:4]
-
-    # shape: [B, W, B, 1, 2]
-    pred_box_xy = tf.expand_dims(pred_box_xy, -2)
-    pred_box_wh = tf.expand_dims(pred_box_wh, -2)
-
-    # [V, 2]
-    true_box_xy = valid_true_boxes[:, 0:2]
-    true_box_wh = valid_true_boxes[:, 2:4]
-
-    # [H, W, B, 1, 2] & [V, 2] ==> [H, W, B, V, 2]
-    intersect_mins = tf.maximum(pred_box_xy - pred_box_wh / 2.,
-                                true_box_xy - true_box_wh / 2.)
-    intersect_maxs = tf.minimum(pred_box_xy + pred_box_wh / 2.,
-                                true_box_xy + true_box_wh / 2.)
-    intersect_wh = tf.maximum(intersect_maxs - intersect_mins, 0.)
-
-    # shape: [H, W, B, V]
-    intersect_area = intersect_wh[..., 0] * intersect_wh[..., 1]
-    # shape: [H, W, B, 1]
-    pred_box_area = pred_box_wh[..., 0] * pred_box_wh[..., 1]
-    # shape: [V]
-    true_box_area = true_box_wh[..., 0] * true_box_wh[..., 1]
-    # shape: [1, V]
-    true_box_area = tf.expand_dims(true_box_area, axis=0)
-
-    # [H, W, B, V]
-    iou = intersect_area / (pred_box_area + true_box_area - intersect_area + 1e-10)
-
-    return iou
-
-
-def cal_ignore_mask(batch_size, coord_pred, coord_gt, positive):
-    # the calculation of ignore mask if referred from
-    # https://github.com/pjreddie/darknet/blob/master/src/yolo_layer.c#L179
-    ignore_mask = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
-
-    def loop_cond(idx, ignore_mask):
-        return tf.less(idx, tf.cast(batch_size, tf.int32))
-
-    def loop_body(idx, ignore_mask):
-        # shape: [H, W, B, 4] & [H, W, B]  ==>  [V, 4]
-        # V: num of true gt box of each image in a batch
-        valid_true_boxes = tf.boolean_mask(coord_gt[idx], tf.cast(positive[idx, ..., 0], 'bool'))
-        # shape: [H, W, B, 4] & [V, 4] ==> [H, W, B, V]
-        iou = box_iou(coord_pred[idx], valid_true_boxes)
-        # shape: [H, W, B]
-        best_iou = tf.reduce_max(iou, axis=-1)
-        # shape: [H, W, B]
-        ignore_mask_tmp = tf.cast(best_iou < config.IOU_THRESHOLD, tf.float32)
-        # finally will be shape: [?, H, W, B]
-        ignore_mask = ignore_mask.write(idx, ignore_mask_tmp)
-        return idx + 1, ignore_mask
-
-    _, ignore_mask = tf.while_loop(cond=loop_cond, body=loop_body, loop_vars=[0, ignore_mask])
-    ignore_mask = ignore_mask.stack()
-    # shape: [?, H, W, B, 1]
-    ignore_mask = tf.expand_dims(ignore_mask, -1)
-
-    return ignore_mask
+        return total_loss

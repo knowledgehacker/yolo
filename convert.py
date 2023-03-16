@@ -23,11 +23,13 @@ from collections import defaultdict
 import numpy as np
 from keras import backend as K
 from keras.models import Model
-from keras.layers import Input, Conv2D, MaxPool2D, BatchNormalization, LeakyReLU
+from keras.layers import Input, ZeroPadding2D, Conv2D, MaxPool2D, GlobalAveragePooling2D, BatchNormalization, LeakyReLU, UpSampling2D, Add, concatenate
 from keras.regularizers import l2
 from keras.utils.vis_utils import plot_model as plot
 
 import config
+from utils.layer import pad2d
+#from utils.compose import space_to_depth_x2
 
 parser = argparse.ArgumentParser(description='Darknet To Keras Converter.')
 parser.add_argument('config_path', help='Path to Darknet cfg file.')
@@ -115,7 +117,7 @@ def _main(args):
             activation = cfg_parser[section]['activation']
             batch_normalize = 'batch_normalize' in cfg_parser[section]
 
-            # use padding 'same' for all conv layers, by minglin
+            # use 'same' padding for all convolutional layer, by minglin
             #padding = 'same' if pad == 1 and stride == 1 else 'valid'
             padding = 'same' if pad == 1 else 'valid'
 
@@ -180,11 +182,11 @@ def _main(args):
                         activation, section))
 
             # Create Conv2D layer
-            # use 'same' mode for the moment, by minglin
             """
-            if stride>1:
+            if stride > 1:
                 # Darknet uses left and top padding instead of 'same' mode
-                prev_layer = ZeroPadding2D(((1,0),(1,0)))(prev_layer)
+                #prev_layer = ZeroPadding2D(((1,0),(1,0)))(prev_layer)
+                prev_layer = pad2d(prev_layer, size)
             """
             conv_layer = (Conv2D(
                 filters, (size, size),
@@ -228,6 +230,42 @@ def _main(args):
                     padding='same',
                     data_format=data_format,
                     name="maxpool1_%dto%d" % (in_channels, out_channels))(prev_layer))
+            prev_layer = all_layers[-1]
+
+        elif section.startswith('avgpool'):
+            if cfg_parser.items(section) != []:
+                raise ValueError('{} with params unsupported.'.format(section))
+            all_layers.append(GlobalAveragePooling2D()(prev_layer))
+            prev_layer = all_layers[-1]
+
+        elif section.startswith('route'):
+            ids = [int(i) for i in cfg_parser[section]['layers'].split(',')]
+            layers = [all_layers[i] for i in ids]
+            if len(layers) > 1:
+                print('Concatenating route layers:', layers)
+                concatenate_layer = concatenate(layers)
+                all_layers.append(concatenate_layer)
+                prev_layer = concatenate_layer
+            else:
+                skip_layer = layers[0]  # only one layer to route
+                all_layers.append(skip_layer)
+                prev_layer = skip_layer
+
+        elif section.startswith('shortcut'):
+            index = int(cfg_parser[section]['from'])
+            activation = cfg_parser[section]['activation']
+            assert activation == 'linear', 'Only linear activation supported.'
+            all_layers.append(Add()([all_layers[index], prev_layer]))
+            prev_layer = all_layers[-1]
+
+        elif section.startswith('upsample'):
+            stride = int(cfg_parser[section]['stride'])
+            assert stride == 2, 'Only stride=2 supported.'
+            all_layers.append(UpSampling2D(stride)(prev_layer))
+            prev_layer = all_layers[-1]
+
+        elif section.startswith('yolo'):
+            all_layers.append(None)
             prev_layer = all_layers[-1]
 
         elif section.startswith('net'):

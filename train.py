@@ -28,7 +28,7 @@ cfg = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
 cfg.gpu_options.allow_growth = True
 
 
-H, W = config.H, config.W
+RESIZE_H, RESIZE_W = config.IMG_H, config.IMG_W
 B = config.B
 C = config.C
 
@@ -53,21 +53,27 @@ def train():
         #To be able to feed with batches of different size, the first dimension should be None
         image_ph = tf.placeholder(dtype=tf.float32, shape=config.placeholder_image_shape, name="image_ph")
         box_ph_dict = {
-            "cls": tf.placeholder(dtype=tf.float32, shape=(None, H, W, B, C), name="cls_ph"),
-            "conf": tf.placeholder(dtype=tf.float32, shape=(None, H, W, B, 1), name="conf_ph"),
-            "coord": tf.placeholder(dtype=tf.float32, shape=(None, H, W, B, 4), name="coord_ph")
+            "y_true_13": tf.placeholder(dtype=tf.float32, shape=(None, 13, 13, B, 4 + 1 + C),
+                                        name="y_true_13_ph"),
+            "y_true_26": tf.placeholder(dtype=tf.float32, shape=(None, 26, 26, B, 4 + 1 + C),
+                                        name="y_true_26_ph"),
+            "y_true_52": tf.placeholder(dtype=tf.float32, shape=(None, 52, 52, B, 4 + 1 + C),
+                                        name="y_true_52_ph")
         }
-        dropout_keep_prob_ph = tf.placeholder(tf.float32, name="dropout_keep_prob_ph")
 
-        net_out_op, pretrained_model = model.forward(image_ph, config.input_shape, config.data_format,
-                                                     dropout_keep_prob_ph, True)
-        loss_op = model.opt(net_out_op, box_ph_dict["cls"], box_ph_dict["conf"], box_ph_dict["coord"])
+        with tf.variable_scope('yolov3'):
+            pred_feature_maps, pretrained_model = model.forward(image_ph, config.input_shape, config.data_format, is_training=True)
+        #pred_fm_1_shape, pred_fm_2_shape, pred_fm_3_shape = tf.shape(pred_feature_maps[0]), tf.shape(pred_feature_maps[1]), tf.shape(pred_feature_maps[2])
+        y_true = [box_ph_dict["y_true_13"], box_ph_dict["y_true_26"], box_ph_dict["y_true_52"]]
+        loss_op = model.opt(pred_feature_maps, y_true)
+        #y_pred = model.predict(pred_feature_maps)
 
         batch_size = config.TRAIN_BATCH_SIZE
         batch_num, last_batch_size = get_batch_num(data, batch_size)
         print("batch_num: %d, batch_size: %d, last_batch_size: %d" % (batch_num, batch_size, last_batch_size))
         total_warmup_step = batch_num * config.WARMUP_EPOCH
 
+        # TODO: can not support change batch size when resuming
         global_step_op = tf.Variable(1., trainable=False)
         if config.USE_WARMUP:
             lr_op = tf.cond(tf.less(global_step_op, total_warmup_step),
@@ -133,8 +139,11 @@ def train():
                 feed_dict[image_ph] = images
                 for key in box_ph_dict:
                     feed_dict[box_ph_dict[key]] = box_dict[key]
-                feed_dict[dropout_keep_prob_ph] = config.TRAIN_KEEP_PROB
-
+                """
+                shape_1, shape_2, shape_3 = sess.run([pred_fm_1_shape, pred_fm_2_shape, pred_fm_3_shape], feed_dict=feed_dict)
+                print("--- shape")
+                print(shape_1, shape_2, shape_3)
+                """
                 _, loss, global_step, lr = sess.run([train_op, loss_op, global_step_op, lr_op], feed_dict=feed_dict)
 
                 # print train loss message
@@ -146,7 +155,7 @@ def train():
             saver.save(sess, ckpt_path, global_step=i)
 
             # save model each epoch
-            outputs = ["net_out", "loss"]
+            outputs = ["yolov3/yolov3_head/feature_map_1", "yolov3/yolov3_head/feature_map_2", "yolov3/yolov3_head/feature_map_3", "loss"]
             save_model(sess, config.MODLE_DIR, config.MODEL_NAME, outputs)
 
     print(current_time(), "Training finished!")

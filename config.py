@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 MODEL_NAME = 'fast_yolo'
 
 VERSION = "v3"
@@ -24,8 +26,8 @@ ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % VOC2012_2007_DIR
 IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % VOC2012_2007_DIR
 
 
-#ANNOTATION_TRAIN_DIR = 'data/tmp/Annotations'
-#IMAGE_TRAIN_DIR = 'data/tmp/JPEGImages'
+ANNOTATION_TRAIN_DIR = 'data/tmp/Annotations'
+IMAGE_TRAIN_DIR = 'data/tmp/JPEGImages'
 
 #ANNOTATION_TEST_DIR = '%s/test/Annotations' % VOC2007_DIR
 #IMAGE_TEST_DIR = '%s/test/JPEGImages' % VOC2007_DIR
@@ -59,16 +61,15 @@ C = len(CLASSES)
 # feature map H x W
 IMG_H, IMG_W, IMG_CH = 416, 416, 3
 
-H, W = 13, 13
-B = 5
+B = 3
 
 KEEP_ASPECT_RATIO = False
 
 # term scale in loss formula
-object_scale = 1.0
-noobject_scale = 1.0
-class_scale = 1.0
-coord_scale = 1.0
+object_scale = 1.
+noobject_scale = 1.
+class_scale = 1.
+coord_scale = 1.
 
 USE_FOCAL_LOSS = False
 ALPHA = 1.0
@@ -86,7 +87,7 @@ NUM_EPOCH = 100
 USE_WARMUP = True
 WARMUP_EPOCH = 3
 LR_INIT = 1e-4
-BOUNDARIES = [20, 40]
+BOUNDARIES = [25, 40]
 LRS = [LR_INIT, 3e-5, 1e-4]
 TRAIN_BATCH_SIZE = 8
 
@@ -94,14 +95,16 @@ TRAIN_BATCH_SIZE = 8
 TEST_BATCH_SIZE = 1
 
 # P(object) * P(class|object), hope P(class|object) > THRESHOLD, P(object) ~ 1.0
-THRESHOLD = 0.2
+THRESHOLD = 0.3
 
 # pretrain network
-pt_net = "darknet19_448"
+pt_net = "darknet53_448"
 
 # box priors for voc2012, (w, h), based on not coordinates but grid
 # https://github.com/pjreddie/darknet/blob/master/cfg/yolov2-voc.cfg
-anchors = [1.32, 1.73, 3.19, 4.01, 5.05, 8.10, 9.47, 4.84, 11.23, 10.01]
+#anchors = [1.3221, 1.73145, 3.19275, 4.00944, 5.05587, 8.09892, 9.47112, 4.84053, 11.2364, 10.0071]
+# multi-scale, that is, 416/52=8, 416/26=16, 416/13=32
+anchors = [[10,13],  [16,30],  [33,23],  [30,61],  [62,45],  [59,119],  [116,90],  [156,198],  [373,326]]
 
 IOU_THRESHOLD = 0.5
 
