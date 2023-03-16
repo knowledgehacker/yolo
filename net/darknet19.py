@@ -55,6 +55,7 @@ class DarkNet19(object):
         convs = [(1024, 3, 1), (512, 1, 1), (1024, 3, 1), (512, 1, 1), (1024, 3, 1)]
         x = ConvBatchLReLu_loop(x, convs, padding_mode, data_format, 14, trainable) # (?, 1024, 13, 13) in NCHW?
 
+        # use bias
         output = Conv(x, 1000, 1, 1, padding_mode, data_format, 19, trainable)
 
         #return passthrough, x

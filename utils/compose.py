@@ -8,9 +8,12 @@ from keras.regularizers import l2
 
 
 def ConvBatchLReLu(x, filter, size, stride, padding_mode, data_format, index, trainable):
+    x = Conv(x, filter, size, stride, padding_mode, data_format, index, use_bias=False, trainable=trainable)
+    """
     x = Conv2D(filter, kernel_size=(size, size), strides=(stride, stride),
                padding=padding_mode, data_format=data_format, name='conv_{}'.format(index),
                use_bias=False, trainable=trainable)(x)
+    """
     bn_axis = -1
     if data_format == "channels_first":
         bn_axis = 1
@@ -29,18 +32,21 @@ def ConvBatchLReLu_loop(x, convs, padding_mode, data_format, index, trainable):
 
 
 def ConvLReLu(x, filter, size, stride, padding_mode, data_format, index, trainable):
+    x = Conv(x, filter, size, stride, padding_mode, data_format, index, use_bias=True, trainable=trainable)
+    """
     x = Conv2D(filter, kernel_size=(size, size), strides=(stride, stride),
                padding=padding_mode, data_format=data_format, name='conv_{}'.format(index),
                use_bias=True, trainable=trainable)(x)
+    """
     x = LeakyReLU(alpha=0.1, name="relu_{}".format(index))(x)
 
     return x
 
 
-def Conv(x, filter, size, stride, padding_mode, data_format, index, trainable):
+def Conv(x, filter, size, stride, padding_mode, data_format, index, use_bias=True, trainable=True):
     return Conv2D(filter, kernel_size=(size, size), strides=(stride, stride),
                   padding=padding_mode, data_format=data_format, name='conv_{}'.format(index),
-                  use_bias=True, kernel_regularizer=l2(5e-4), trainable=trainable)(x)
+                  use_bias=use_bias, kernel_regularizer=l2(5e-4), trainable=trainable)(x)
 
 
 def MaxPool(x, size, padding_mode, data_format, name):

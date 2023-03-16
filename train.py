@@ -93,7 +93,9 @@ def train():
             tf.global_variables_initializer().run()
 
             # load pretrained weights after initializing global variables to avoid weights being re-initialized
+            print("load pretrained %s starts..." % config.pt_net)
             pretrained_model.load_weights("data/weights/%s.h5" % config.pt_net)
+            print("load pretrained %s finished!" % config.pt_net)
         else:
             print("resume from last epoch %d ..." % trained_epoch)
             # restore will initialize global variables with the saved ones
