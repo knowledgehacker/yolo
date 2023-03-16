@@ -51,24 +51,36 @@ def get_image_boxes(image_file, net_out):
 	return image, h, w, boxes
 
 
-def draw_detection_on_image(image_file, net_out, save=True):
+def draw_box(image, h, w, left, top, right, bot, cls, color):
+	thick = int((h + w) // 300)
+
+	cv2.rectangle(image,
+				  (left, top), (right, bot),
+				  color, thick)
+	cv2.putText(
+		image, cls, (left, top - 12),
+		0, 1e-3 * h, color,
+		   thick // 3)
+
+
+def draw_detection_on_image(image_file, net_out, gt, save=True):
 	image, h, w, boxes = get_image_boxes(image_file, net_out)
 
+	# draw detected boxes
+	color = (0, 255, 255)
 	for b in boxes:
 		boxResults = process_box(b, h, w, config.THRESHOLD)
 		if boxResults is None:
 			continue
-		left, right, top, bot, mess, max_indx, confidence = boxResults
-		thick = int((h + w) // 300)
+		left, right, top, bot, cls, max_indx, confidence = boxResults
+		draw_box(image, h, w, left, top, right, bot, cls, color)
 
-		color = (248, 0, 124)
-		cv2.rectangle(image,
-			(left, top), (right, bot),
-			color, thick)
-		cv2.putText(
-			image, mess, (left, top - 12),
-			0, 1e-3 * h, color,
-			thick // 3)
+	# draw ground truth boxes
+	color = (0, 0, 255)
+	_, _, labels, objs = gt
+	for obj, label in zip(objs, labels):
+		left, top, right, bot = obj
+		draw_box(image, h, w, left, top, right, bot, label, color)
 
 	if not save:
 		return image
