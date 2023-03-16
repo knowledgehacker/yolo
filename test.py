@@ -95,7 +95,7 @@ def test():
                     image_file = "%s/%s" % (config.IMAGE_TEST_DIR, chunk[0])
                     # !!!Important, we can not exchange the call below, since draw_detection_on_image changes the raw images
                     #save_detection_as_json(image_file, net_out)
-                    draw_detection_on_image(image_file, net_out)
+                    draw_detection_on_image(image_file, net_out, chunk[1])
 
             # print loss message
             print(current_time(), "step %d, loss: %.3f" % (step, loss))
