@@ -4,6 +4,7 @@ import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()
 
 from keras.layers import ZeroPadding2D, Conv2D, BatchNormalization, LeakyReLU, UpSampling2D
+from keras.regularizers import l2
 
 
 def pad2d(inputs, kernel_size):
@@ -16,7 +17,7 @@ def pad2d(inputs, kernel_size):
     return padded_inputs
 
 
-def conv2d(inputs, filter, size, stride, data_format, trainable=True):
+def conv2d(inputs, filter, size, stride, data_format, use_bias=False, trainable=True):
     """
     if stride > 1:
         # Darknet uses left and top padding instead of 'same' mode
@@ -28,14 +29,14 @@ def conv2d(inputs, filter, size, stride, data_format, trainable=True):
     padding = 'SAME'
 
     x = Conv2D(filter, kernel_size=(size, size), strides=(stride, stride),
-               padding=padding, data_format=data_format, use_bias=False,
+               padding=padding, data_format=data_format, use_bias=use_bias, kernel_regularizer=l2(5e-4),
                trainable=trainable)(inputs)
 
     return x
 
 
 def dbl(inputs, filter, size, stride, data_format, trainable=True):
-    x = conv2d(inputs, filter, size, stride, data_format, trainable)
+    x = conv2d(inputs, filter, size, stride, data_format, trainable=trainable)
 
     bn_axis = -1
     if data_format == "channels_first":

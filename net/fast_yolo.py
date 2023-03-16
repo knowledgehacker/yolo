@@ -28,8 +28,8 @@ class FastYolo(object):
         input_image = Input(shape=input_shape, name="input_image")
 
         with tf.variable_scope('darknet53_body'):
-            route_1, route_2, route_3 = self.net.build(input_image, data_format, trainable=is_training)
-            pretrained_model = Model(inputs=input_image, outputs=[route_1, route_2, route_3])
+            route_1, route_2, route_3, darknet53_out = self.net.build(input_image, data_format, trainable=is_training)
+            pretrained_model = Model(inputs=input_image, outputs=darknet53_out)
 
         with tf.variable_scope('yolov3_head'):
             feature_map_out_size = B * (4 + 1 + C)
@@ -97,9 +97,11 @@ class FastYolo(object):
         # tw/th
         true_wh = y_true[..., 2:4] / anchors
         pred_wh = pred_boxes[..., 2:4] / anchors
+        """
         # for numerical stability
         true_wh = tf.where(condition=tf.equal(true_wh, 0), x=tf.ones_like(true_wh), y=true_wh)
         pred_wh = tf.where(condition=tf.equal(pred_wh, 0), x=tf.ones_like(pred_wh), y=pred_wh)
+        """
         true_wh = tf.log(tf.clip_by_value(true_wh, 1e-9, 1e9))
         pred_wh = tf.log(tf.clip_by_value(pred_wh, 1e-9, 1e9))
 
@@ -112,12 +114,9 @@ class FastYolo(object):
         wh_loss = tf.reduce_sum(tf.square(true_wh - pred_wh) * object_mask * box_loss_scale) / batch_size
 
         # shape: [N, 13, 13, 3, 1]
-        conf_pos_mask = object_mask
-        conf_neg_mask = (1 - object_mask) * ignore_mask
-        conf_loss_pos = conf_pos_mask * tf.nn.sigmoid_cross_entropy_with_logits(labels=object_mask, logits=pred_conf_logits)
-        conf_loss_neg = conf_neg_mask * tf.nn.sigmoid_cross_entropy_with_logits(labels=object_mask, logits=pred_conf_logits)
+        conf_bce = tf.nn.sigmoid_cross_entropy_with_logits(labels=object_mask, logits=pred_conf_logits)
         # TODO: may need to balance the pos-neg by multiplying some weights
-        conf_loss = conf_loss_pos + conf_loss_neg
+        conf_loss = object_mask * conf_bce + (1. - object_mask) * ignore_mask * conf_bce
         if config.USE_FOCAL_LOSS:
             # TODO: alpha should be a mask array if needed
             focal_mask = config.ALPHA * tf.pow(tf.abs(object_mask - tf.sigmoid(pred_conf_logits)), config.GAMMA)
@@ -130,7 +129,8 @@ class FastYolo(object):
             label_target = (1 - delta) * y_true[..., 5:] + delta * 1. / C
         else:
             label_target = y_true[..., 5:]
-        class_loss = object_mask * tf.nn.sigmoid_cross_entropy_with_logits(labels=label_target, logits=pred_prob_logits)
+        class_bce = tf.nn.sigmoid_cross_entropy_with_logits(labels=label_target, logits=pred_prob_logits)
+        class_loss = object_mask * class_bce
         class_loss = tf.reduce_sum(class_loss) / batch_size
 
         return xy_loss, wh_loss, conf_loss, class_loss
@@ -182,4 +182,4 @@ class FastYolo(object):
         total_loss = loss_xy + loss_wh + loss_conf + loss_class
         total_loss = tf.identity(total_loss, name='loss')
 
-        return total_loss
+        return total_loss, loss_xy, loss_wh, loss_conf, loss_class

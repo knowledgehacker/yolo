@@ -53,19 +53,16 @@ def train():
         #To be able to feed with batches of different size, the first dimension should be None
         image_ph = tf.placeholder(dtype=tf.float32, shape=config.placeholder_image_shape, name="image_ph")
         box_ph_dict = {
-            "y_true_13": tf.placeholder(dtype=tf.float32, shape=(None, 13, 13, B, 4 + 1 + C),
-                                        name="y_true_13_ph"),
-            "y_true_26": tf.placeholder(dtype=tf.float32, shape=(None, 26, 26, B, 4 + 1 + C),
-                                        name="y_true_26_ph"),
-            "y_true_52": tf.placeholder(dtype=tf.float32, shape=(None, 52, 52, B, 4 + 1 + C),
-                                        name="y_true_52_ph")
+            "y_true_13": tf.placeholder(dtype=tf.float32, shape=(None, 13, 13, B, 4 + 1 + C), name="y_true_13_ph"),
+            "y_true_26": tf.placeholder(dtype=tf.float32, shape=(None, 26, 26, B, 4 + 1 + C), name="y_true_26_ph"),
+            "y_true_52": tf.placeholder(dtype=tf.float32, shape=(None, 52, 52, B, 4 + 1 + C), name="y_true_52_ph")
         }
 
         with tf.variable_scope('yolov3'):
             pred_feature_maps, pretrained_model = model.forward(image_ph, config.input_shape, config.data_format, is_training=True)
         #pred_fm_1_shape, pred_fm_2_shape, pred_fm_3_shape = tf.shape(pred_feature_maps[0]), tf.shape(pred_feature_maps[1]), tf.shape(pred_feature_maps[2])
         y_true = [box_ph_dict["y_true_13"], box_ph_dict["y_true_26"], box_ph_dict["y_true_52"]]
-        loss_op = model.opt(pred_feature_maps, y_true)
+        loss_op, loss_xy_op, loss_wh_op, loss_conf_op, loss_class_op = model.opt(pred_feature_maps, y_true)
         #y_pred = model.predict(pred_feature_maps)
 
         batch_size = config.TRAIN_BATCH_SIZE
@@ -99,7 +96,9 @@ def train():
             tf.global_variables_initializer().run()
 
             # load pretrained weights after initializing global variables to avoid weights being re-initialized
+            print("load pretrained %s starts..." % config.pt_net)
             pretrained_model.load_weights("data/weights/%s.h5" % config.pt_net)
+            print("load pretrained %s finished" % config.pt_net)
         else:
             print("resume from last epoch %d ..." % trained_epoch)
             # restore will initialize global variables with the saved ones
@@ -144,11 +143,12 @@ def train():
                 print("--- shape")
                 print(shape_1, shape_2, shape_3)
                 """
-                _, loss, global_step, lr = sess.run([train_op, loss_op, global_step_op, lr_op], feed_dict=feed_dict)
+                _, loss, loss_xy, loss_wh, loss_conf, loss_class, global_step, lr = sess.run([train_op, loss_op, loss_xy_op,
+                                                                                              loss_wh_op, loss_conf_op, loss_class_op, global_step_op, lr_op], feed_dict=feed_dict)
 
                 # print train loss message
                 if step % config.STEPS_PER_CKPT == 0:
-                    print(current_time(), "step %d, loss: %.3f, global_step: %d, lr: %.6f" % (step, loss, global_step, lr))
+                    print(current_time(), "step %d, loss: %.3f, (xy: %.3f, wh: %.3f, conf: %.3f, class: %.3f), global_step: %d, lr: %.6f" % (step, loss, loss_xy, loss_wh, loss_conf, loss_class, global_step, lr))
                     # saver.save(sess, config.CKPT_PATH, global_step=step)
 
             # checkpoint upon each epoch instead of some step during an epoch, for convenient restore

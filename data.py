@@ -74,42 +74,39 @@ def batch(image_dir, chunks, test=False):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32)
         img = img / 255.
 
-        # Calculate placeholders' values
         # https://github.com/wizyoung/YOLOv3_TensorFlow/blob/8776cf7b2531cae83f5fc730f3c70ae97919bfd6/utils/data_utils.py#L51
-        y_true_13 = np.zeros([13, 13, B, 4 + 1 + C])
-        y_true_26 = np.zeros([26, 26, B, 4 + 1 + C])
-        y_true_52 = np.zeros([52, 52, B, 4 + 1 + C])
+        y_true_13 = np.zeros((13, 13, B, 4 + 1 + C))
+        y_true_26 = np.zeros((26, 26, B, 4 + 1 + C))
+        y_true_52 = np.zeros((52, 52, B, 4 + 1 + C))
 
         y_true = [y_true_13, y_true_26, y_true_52]
 
-        # normalized box center x/y coordinates and width/height to in grid unit
         box_centers = (objs[:, 0:2] + objs[:, 2:4]) / 2.
         box_sizes = objs[:, 2:4] - objs[:, 0:2]
 
-        anchor_2_feature_map = dict()
+        ratio_dict = {0: 8., 1: 16., 2.: 32.}
         anchors_mask = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
-        for i, index_set in enumerate(anchors_mask):
-            for index in index_set:
-                anchor_2_feature_map[index] = i
 
         anchors = np.reshape(config.anchors, [B*3, 2])
         best_match_anchors = find_best_match_anchors(box_sizes, anchors)
-        ratio_dict = {1.: 8., 2.: 16., 3.: 32.}
-        for i, idx in enumerate(best_match_anchors):
-            # idx: 0,1,2 ==> 2; 3,4,5 ==> 1; 6,7,8 ==> 0
-            feature_map_group = 2 - idx // 3
-            # scale ratio: 0,1,2 ==> 8; 3,4,5 ==> 16; 6,7,8 ==> 32
-            ratio = ratio_dict[np.ceil((idx + 1) / 3.)]
+        for i, anchor in enumerate(best_match_anchors):
+            # anchor: 0,1,2 ==> 2; 3,4,5 ==> 1; 6,7,8 ==> 0
+            feature_map_group = 2 - anchor // 3
+            ratio = ratio_dict[feature_map_group]
             x = int(np.floor(box_centers[i, 0] / ratio))
             y = int(np.floor(box_centers[i, 1] / ratio))
-            k = anchors_mask[feature_map_group].index(idx)
-            c = labels[i]
+            k = anchors_mask[feature_map_group].index(anchor)
+            c = classes.index(labels[i])
             # print(feature_map_group, '|', y,x,k,c)
 
-            y_true[feature_map_group][y, x, k, :2] = box_centers[i]
+            y_true[feature_map_group][y, x, k, 0:2] = box_centers[i]
             y_true[feature_map_group][y, x, k, 2:4] = box_sizes[i]
+            y_true[feature_map_group][y, x, k, 4] = 1.
+            y_true[feature_map_group][y, x, k, 5+c] = 1.
+            """
             y_true[feature_map_group][y, x, k, 4:5] = 1.
-            y_true[feature_map_group][y, x, k, 5+classes.index(c):5+classes.index(c)+1] = 1.
+            y_true[feature_map_group][y, x, k, 5+c:5+c+1] = 1.
+            """
 
         # collect regression items
         image_batch.append(img)
