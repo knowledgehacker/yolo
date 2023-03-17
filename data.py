@@ -84,7 +84,8 @@ def batch(image_dir, chunks, test=False):
         box_centers = (objs[:, 0:2] + objs[:, 2:4]) / 2.
         box_sizes = objs[:, 2:4] - objs[:, 0:2]
 
-        ratio_dict = {0: 8., 1: 16., 2.: 32.}
+        ratio_dict = {0: 8., 1: 16., 2: 32.}
+        #ratio_dict = {1.: 8., 2.: 16., 3.: 32.}
         anchors_mask = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
 
         anchors = np.reshape(config.anchors, [B*3, 2])
@@ -92,7 +93,8 @@ def batch(image_dir, chunks, test=False):
         for i, anchor in enumerate(best_match_anchors):
             # anchor: 0,1,2 ==> 2; 3,4,5 ==> 1; 6,7,8 ==> 0
             feature_map_group = 2 - anchor // 3
-            ratio = ratio_dict[feature_map_group]
+            ratio = ratio_dict[2 - feature_map_group]
+            #ratio = ratio_dict[np.ceil((anchor + 1) / 3.)]
             x = int(np.floor(box_centers[i, 0] / ratio))
             y = int(np.floor(box_centers[i, 1] / ratio))
             k = anchors_mask[feature_map_group].index(anchor)
