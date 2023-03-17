@@ -31,9 +31,9 @@ def restore_coord(feature_map, anchors, ratio):
     # split the feature_map along the last dimension
     box_centers, box_sizes, conf_logits, prob_logits = tf.split(feature_map, [2, 2, 1, C], axis=-1)
 
-    x_y_offset = create_xy_offset(grid_size)
+    xy_offset = create_xy_offset(grid_size)
     box_centers = tf.nn.sigmoid(box_centers)
-    box_centers = box_centers + x_y_offset
+    box_centers = box_centers + xy_offset
     box_centers = box_centers * ratio[::-1]
 
     rescaled_anchors = [(anchor[0] / ratio[1], anchor[1] / ratio[0]) for anchor in anchors]
@@ -44,7 +44,7 @@ def restore_coord(feature_map, anchors, ratio):
 
     boxes = tf.concat([box_centers, box_sizes], axis=-1)
 
-    return x_y_offset, boxes, conf_logits, prob_logits
+    return xy_offset, boxes, conf_logits, prob_logits
 
 
 def cal_iou(pred_boxes, valid_true_boxes):

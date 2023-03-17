@@ -5,7 +5,7 @@ import numpy as np
 import config
 from utils.voc_parser import parse
 from data import get_batch_num, batch
-from predict import postprocess, draw_detection_on_image, save_detection_as_json
+from predict import gpu_nms, predict, draw_detection_on_image#, save_detection_as_json
 from utils.misc import current_time, with_prefix, load_model
 
 """
@@ -29,7 +29,7 @@ def test():
         data = parse(config.ANNOTATION_TEST_DIR, config.CLASSES)
         print(current_time(), "Parse finished!")
 
-    outputs = ["net_out", "loss"]
+    outputs = ["feature_map_0", "feature_map_1", "feature_map_2", "loss"]
     g = load_model(config.MODLE_DIR, config.MODEL_NAME, outputs)
     with tf.Session(graph=g, config=cfg) as sess:
         #load_ckpt_model(sess, config.CKPT_DIR)
@@ -42,14 +42,17 @@ def test():
 
         image_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "image_ph:0"))
         box_ph_dict = {
-            "cls": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "cls_ph:0")),
-            "conf": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "conf_ph:0")),
-            "coord": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "coord_ph:0"))
+            "y_true_13": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "y_true_13_ph:0")),
+            "y_true_26": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "y_true_26_ph:0")),
+            "y_true_52": g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "y_true_52_ph:0"))
         }
-        #dropout_keep_prob_ph = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "dropout_keep_prob_ph:0"))
 
-        # get net_out and loss
-        net_out_op = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "net_out:0"))
+        # get feature maps and loss
+        feature_map_0_op = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "feature_map_0:0"))
+        feature_map_1_op = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "feature_map_1:0"))
+        feature_map_2_op = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "feature_map_2:0"))
+        feature_maps_op = [feature_map_0_op, feature_map_1_op, feature_map_2_op]
+        boxes_op, confs_op, probs_op = predict(feature_maps_op)
         loss_op = g.get_tensor_by_name(with_prefix(config.MODEL_NAME, "loss:0"))
 
         batch_size = config.TEST_BATCH_SIZE
@@ -78,38 +81,26 @@ def test():
             feed_dict[image_ph] = images
             for key in box_ph_dict:
                 feed_dict[box_ph_dict[key]] = box_dict[key]
-            #feed_dict[dropout_keep_prob_ph] = config.TEST_KEEP_PROB
 
-            net_outs, loss = sess.run([net_out_op, loss_op], feed_dict=feed_dict)
-            #print("--- net_outs.shape")
-            #print(net_outs.shape)
+            boxes_batch, confs_batch, probs_batch, loss = sess.run([boxes_op, confs_op, probs_op, loss_op], feed_dict=feed_dict)
 
             # predict
             print(current_time(), "batch %d predict starts ..." % step)
-            """
-            image_fnames = [chunk[0] for chunk in chunks]
-            predict(config.IMAGE_TEST_DIR, image_fnames, net_outs)
-            """
-            with tf.device("/cpu:0"):
-                for chunk, net_out in zip(chunks, net_outs):
-                    image_file = "%s/%s" % (config.IMAGE_TEST_DIR, chunk[0])
-                    # !!!Important, we can not exchange the call below, since draw_detection_on_image changes the raw images
-                    #save_detection_as_json(image_file, net_out)
-                    draw_detection_on_image(image_file, net_out, chunk[1])
+            for i in range(len(chunks)):
+                chunk = chunks[i]
+                boxes, confs, probs = boxes_batch[i], confs_batch[i], probs_batch[i]
+                image_file = "%s/%s" % (config.IMAGE_TEST_DIR, chunk[0])
+                gpu_nms_op = gpu_nms(boxes, confs * probs, config.C, 50, config.THRESHOLD, config.IOU_THRESHOLD)
+                boxes_pred, scores_pred, labels_pred = sess.run(gpu_nms_op)
+                # !!!Important, we can not exchange the call below, since draw_detection_on_image changes the raw images
+                # save_detection_as_json(image_file, [boxes_pred, scores_pred, labels_pred])
+                draw_detection_on_image(image_file, [boxes_pred, scores_pred, labels_pred], chunk[1])
 
             # print loss message
             print(current_time(), "step %d, loss: %.3f" % (step, loss))
 
     print(current_time(), "Testing finished!")
 
-
-"""
-def predict(image_dir, image_fnames, net_outs):
-    for (image_fname, net_out) in zip(image_fnames, net_outs):
-        image_file = "%s/%s" % (image_dir, image_fname)
-        #print("image_file: %s" % image_file)
-        draw_detection_on_image(image_file, net_out)
-"""
 
 if __name__ == "__main__":
     test()

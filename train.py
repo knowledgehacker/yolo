@@ -58,12 +58,10 @@ def train():
             "y_true_52": tf.placeholder(dtype=tf.float32, shape=(None, 52, 52, B, 4 + 1 + C), name="y_true_52_ph")
         }
 
-        with tf.variable_scope('yolov3'):
-            pred_feature_maps, pretrained_model = model.forward(image_ph, config.input_shape, config.data_format, is_training=True)
-        #pred_fm_1_shape, pred_fm_2_shape, pred_fm_3_shape = tf.shape(pred_feature_maps[0]), tf.shape(pred_feature_maps[1]), tf.shape(pred_feature_maps[2])
+        #with tf.variable_scope('yolov3'):
+        pred_feature_maps, pretrained_model = model.forward(image_ph, config.input_shape, config.data_format)
         y_true = [box_ph_dict["y_true_13"], box_ph_dict["y_true_26"], box_ph_dict["y_true_52"]]
         loss_op, loss_xy_op, loss_wh_op, loss_conf_op, loss_class_op = model.opt(pred_feature_maps, y_true)
-        #y_pred = model.predict(pred_feature_maps)
 
         batch_size = config.TRAIN_BATCH_SIZE
         batch_num, last_batch_size = get_batch_num(data, batch_size)
@@ -138,11 +136,6 @@ def train():
                 feed_dict[image_ph] = images
                 for key in box_ph_dict:
                     feed_dict[box_ph_dict[key]] = box_dict[key]
-                """
-                shape_1, shape_2, shape_3 = sess.run([pred_fm_1_shape, pred_fm_2_shape, pred_fm_3_shape], feed_dict=feed_dict)
-                print("--- shape")
-                print(shape_1, shape_2, shape_3)
-                """
                 _, loss, loss_xy, loss_wh, loss_conf, loss_class, global_step, lr = sess.run([train_op, loss_op, loss_xy_op,
                                                                                               loss_wh_op, loss_conf_op, loss_class_op, global_step_op, lr_op], feed_dict=feed_dict)
 
@@ -155,7 +148,7 @@ def train():
             saver.save(sess, ckpt_path, global_step=i)
 
             # save model each epoch
-            outputs = ["yolov3/yolov3_head/feature_map_1", "yolov3/yolov3_head/feature_map_2", "yolov3/yolov3_head/feature_map_3", "loss"]
+            outputs = ["feature_map_0", "feature_map_1", "feature_map_2", "loss"]
             save_model(sess, config.MODLE_DIR, config.MODEL_NAME, outputs)
 
     print(current_time(), "Training finished!")

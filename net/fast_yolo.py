@@ -8,7 +8,7 @@ from keras.layers import Input
 
 import config
 from net.darknet53 import DarkNet53
-from utils.layer import conv2d, yolo_block, upsample_layer, concatenate
+from utils.layer import conv2d, yolo_block, upsample, concat, naming
 from utils.box import restore_coord, cal_iou
 
 B = config.B
@@ -20,50 +20,46 @@ class FastYolo(object):
         # print("FastYolo")
         self.net = DarkNet53()
 
-    def forward(self, image_batch, input_shape, data_format, is_training=False, reuse=False):
+    def forward(self, image_batch, input_shape, data_format, is_training=True):
         self.img_size = tf.shape(image_batch)[1:3]
         if data_format == 'channels_first':
             self.img_size = tf.shape(image_batch)[2:4]
 
         input_image = Input(shape=input_shape, name="input_image")
 
-        with tf.variable_scope('darknet53_body'):
-            route_1, route_2, route_3, darknet53_out = self.net.build(input_image, data_format, trainable=is_training)
-            pretrained_model = Model(inputs=input_image, outputs=darknet53_out)
+        #with tf.variable_scope('darknet53_body'):
+        darknet53_out = self.net.build(input_image, data_format, trainable=is_training)
+        pretrained_model = Model(inputs=input_image, outputs=darknet53_out)
 
-        with tf.variable_scope('yolov3_head'):
-            feature_map_out_size = B * (4 + 1 + C)
+        route_1 = pretrained_model.get_layer("route_1").output
+        route_2 = pretrained_model.get_layer("route_2").output
+        route_3 = pretrained_model.get_layer("route_3").output
 
-            inter1, net = yolo_block(route_3, 512, data_format, trainable=is_training)
-            feature_map_1 = conv2d(net, feature_map_out_size, 1, 1, data_format, trainable=is_training)
-            if data_format == 'channels_first':
-                feature_map_1 = tf.transpose(feature_map_1, [0, 2, 3, 1])
-            feature_map_1 = tf.identity(feature_map_1, name='feature_map_1')
+        #with tf.variable_scope('yolov3_head'):
+        feature_map_out_size = B * (4 + 1 + C)
 
-            inter1 = conv2d(inter1, 256, 1, 1, data_format, trainable=is_training)
-            #inter1 = upsample_layer(inter1, route_2.get_shape().as_list() if self.use_static_shape else tf.shape(route_2))
-            inter1 = upsample_layer(inter1, 2, data_format)
-            concat1 = concatenate(inter1, route_2, data_format)
+        inter1, net = yolo_block(route_3, 512, data_format, trainable=is_training)
+        feature_map_0 = conv2d(net, feature_map_out_size, 1, 1, data_format, trainable=is_training)
 
-            inter2, net = yolo_block(concat1, 256, data_format, trainable=is_training)
-            feature_map_2 = conv2d(net, feature_map_out_size, 1, 1, data_format, trainable=is_training)
-            if data_format == 'channels_first':
-                feature_map_2 = tf.transpose(feature_map_2, [0, 2, 3, 1])
-            feature_map_2 = tf.identity(feature_map_2, name='feature_map_2')
+        inter1 = conv2d(inter1, 256, 1, 1, data_format, trainable=is_training)
+        # inter1 = upsample(inter1, route_2.get_shape().as_list() if self.use_static_shape else tf.shape(route_2))
+        inter1 = upsample(inter1, 2, data_format)
+        concat1 = concat([inter1, route_2], data_format)
 
-            inter2 = conv2d(inter2, 128, 1, 1, data_format, trainable=is_training)
-            #inter2 = upsample_layer(inter2, route_1.get_shape().as_list() if self.use_static_shape else tf.shape(route_1))
-            inter2 = upsample_layer(inter2, 2, data_format)
-            concat2 = concatenate(inter2, route_1, data_format)
+        inter2, net = yolo_block(concat1, 256, data_format, trainable=is_training)
+        feature_map_1 = conv2d(net, feature_map_out_size, 1, 1, data_format, trainable=is_training)
 
-            _, net = yolo_block(concat2, 128, data_format, trainable=is_training)
-            feature_map_3 = conv2d(net, feature_map_out_size, 1, 1, data_format, trainable=is_training)
-            if data_format == 'channels_first':
-                feature_map_3 = tf.transpose(feature_map_3, [0, 2, 3, 1])
-            feature_map_3 = tf.identity(feature_map_3, name='feature_map_3')
+        inter2 = conv2d(inter2, 128, 1, 1, data_format, trainable=is_training)
+        # inter2 = upsample(inter2, route_1.get_shape().as_list() if self.use_static_shape else tf.shape(route_1))
+        inter2 = upsample(inter2, 2, data_format)
+        concat2 = concat([inter2, route_1], data_format)
 
-            model = Model(inputs=input_image, outputs=[feature_map_1, feature_map_2, feature_map_3])
-            feature_maps = model.call(image_batch)
+        _, net = yolo_block(concat2, 128, data_format, trainable=is_training)
+        feature_map_2 = conv2d(net, feature_map_out_size, 1, 1, data_format, trainable=is_training)
+
+        model = Model(inputs=input_image, outputs=[feature_map_0, feature_map_1, feature_map_2])
+        feature_maps = model.call(image_batch)
+        feature_maps = [naming(feature_maps[i], data_format, name='feature_map_%d' % i) for i in range(len(feature_maps))]
 
         return feature_maps, pretrained_model
 

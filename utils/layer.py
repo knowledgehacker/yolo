@@ -3,10 +3,10 @@
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()
 
-from keras.layers import ZeroPadding2D, Conv2D, BatchNormalization, LeakyReLU, UpSampling2D
+from keras.layers import ZeroPadding2D, Conv2D, BatchNormalization, LeakyReLU, UpSampling2D, concatenate, Lambda
 from keras.regularizers import l2
 
-
+"""
 def pad2d(inputs, kernel_size):
     pad_total = kernel_size - 1
     pad_beg = pad_total // 2
@@ -15,7 +15,7 @@ def pad2d(inputs, kernel_size):
     padded_inputs = tf.pad(inputs, [[0, 0], [pad_beg, pad_end],
                                     [pad_beg, pad_end], [0, 0]], mode='CONSTANT')
     return padded_inputs
-
+"""
 
 def conv2d(inputs, filter, size, stride, data_format, use_bias=False, trainable=True):
     """
@@ -68,7 +68,7 @@ def yolo_block(inputs, filter, data_format, trainable):
     return route, net
 
 """
-def upsample_layer(inputs, out_shape):
+def upsample(inputs, out_shape):
     new_height, new_width = out_shape[1], out_shape[2]
     # NOTE: here height is the first
     # TODO: Do we need to set `align_corners` as True?
@@ -77,17 +77,32 @@ def upsample_layer(inputs, out_shape):
     return inputs
 """
 
-def upsample_layer(inputs, stride, data_format):
+def upsample(inputs, stride, data_format):
     assert stride == 2, 'Only stride=2 supported.'
     upsampled = UpSampling2D(stride, data_format)(inputs)
 
     return upsampled
 
 
-def concatenate(x, y, data_format):
+def concat(xs, data_format):
     axis = -1
-    if data_format == 'channels_first':
+    if data_format == "channels_first":
         axis = 1
 
-    return tf.concat([x, y], axis=axis)
+    return concatenate(xs, axis=axis)
 
+
+def identity(inputs, name, trainable):
+    #output = Identity(name=name, trainable=trainable)(inputs)
+    # workaround for tf.identity functionality in keras
+    output = Lambda(lambda x: x, name=name, trainable=trainable)(inputs)
+
+    return output
+
+
+def naming(x, data_format, name):
+    if data_format == 'channels_first':
+        x = tf.transpose(x, [0, 2, 3, 1])
+    x = tf.identity(x, name=name)
+
+    return x

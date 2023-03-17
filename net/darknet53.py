@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import config
-from utils.layer import conv2d, dbl, res_block
+from utils.layer import conv2d, dbl, res_block, identity
 
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()
@@ -33,23 +33,24 @@ class DarkNet53(object):
         for i in range(8):
             net = res_block(net, 128, data_format, trainable)
 
-        route_1 = net
+        route_1 = identity(net, name='route_1', trainable=trainable)
 
         """ route_2 """
         # res8 = res_block * 8
-        net = dbl(net, 512, 3, 2, data_format, trainable=trainable)
+        net = dbl(route_1, 512, 3, 2, data_format, trainable=trainable)
         for i in range(8):
             net = res_block(net, 256, data_format, trainable)
 
-        route_2 = net
+        route_2 = identity(net, name='route_2', trainable=trainable)
 
         """ route_3 """
         # res4 = dbl + res_block * 4
-        net = dbl(net, 1024, 3, 2, data_format, trainable=trainable)
+        net = dbl(route_2, 1024, 3, 2, data_format, trainable=trainable)
         for i in range(4):
             net = res_block(net, 512, data_format, trainable)
-        route_3 = net
 
-        output = conv2d(net, 1000, 1, 1, data_format, use_bias=True, trainable=trainable)
+        route_3 = identity(net, name='route_3', trainable=trainable)
 
-        return route_1, route_2, route_3, output
+        output = conv2d(route_3, 1000, 1, 1, data_format, use_bias=True, trainable=trainable)
+
+        return output
