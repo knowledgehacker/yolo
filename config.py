@@ -20,14 +20,14 @@ VOC2012_2007_DIR = '%s/%s' % (DATA_DIR, 'VOC2012')
 ANNOTATION_TRAIN_DIR = '/content/%s/train/Annotations' % VOC2012_2007_DIR
 IMAGE_TRAIN_DIR = '/content/%s/train/JPEGImages' % VOC2012_2007_DIR
 
-
+"""
 # kaggle
 ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % VOC2012_2007_DIR
 IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % VOC2012_2007_DIR
+"""
 
-
-ANNOTATION_TRAIN_DIR = 'data/tmp/Annotations'
-IMAGE_TRAIN_DIR = 'data/tmp/JPEGImages'
+#ANNOTATION_TRAIN_DIR = 'data/tmp/Annotations'
+#IMAGE_TRAIN_DIR = 'data/tmp/JPEGImages'
 
 #ANNOTATION_TEST_DIR = '%s/test/Annotations' % VOC2007_DIR
 #IMAGE_TEST_DIR = '%s/test/JPEGImages' % VOC2007_DIR
@@ -95,18 +95,16 @@ TRAIN_BATCH_SIZE = 8
 TEST_BATCH_SIZE = 1
 
 # P(object) * P(class|object), hope P(class|object) > THRESHOLD, P(object) ~ 1.0
-THRESHOLD = 0.3
+THRESHOLD = 0.2
 
 # pretrain network
 pt_net = "darknet53_448"
 
-# box priors for voc2012, (w, h), based on not coordinates but grid
-# https://github.com/pjreddie/darknet/blob/master/cfg/yolov2-voc.cfg
-#anchors = [1.3221, 1.73145, 3.19275, 4.00944, 5.05587, 8.09892, 9.47112, 4.84053, 11.2364, 10.0071]
-# multi-scale, that is, 416/52=8, 416/26=16, 416/13=32
+# box priors for voc2012, (w, h). multi-scale, that is, 416/52=8, 416/26=16, 416/13=32
+# https://github.com/pjreddie/darknet/blob/master/cfg/yolov3-voc.cfg
 anchors = [[10,13],  [16,30],  [33,23],  [30,61],  [62,45],  [59,119],  [116,90],  [156,198],  [373,326]]
 
-IOU_THRESHOLD = 0.5
+IOU_THRESHOLD = 0.45
 
 if DEVICE_TYPE == "gpu":
     data_format = "channels_first"
@@ -122,5 +120,3 @@ else:
 
 STEPS_PER_CKPT = 1
 
-TRAIN_KEEP_PROB = 0.5
-TEST_KEEP_PROB = 1.0

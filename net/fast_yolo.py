@@ -86,10 +86,12 @@ class FastYolo(object):
         # pred_boxes = {xy = (sigmoid(txy) + xy_offset) * ratio, wh = (exp(twh) * anchor)}
         xy_offset, pred_boxes, pred_conf_logits, pred_prob_logits = restore_coord(feature_map_i, anchors, ratio)
 
+        """ mask """
         # shape: take 416x416 input image and 13*13 feature_map for example:
         object_mask = y_true[..., 4:5]
         ignore_mask = self.cal_ignore_mask(batch_size, y_true[..., 0:4], pred_boxes, object_mask)
 
+        """ loss_part """
         # sigmoid(tx/ty)
         true_xy = y_true[..., 0:2] / ratio[::-1] - xy_offset
         pred_xy = pred_boxes[..., 0:2] / ratio[::-1] - xy_offset
@@ -109,7 +111,6 @@ class FastYolo(object):
         box_loss_scale = 2. - (y_true[..., 2:3] / tf.cast(self.img_size[1], tf.float32)) * (
                     y_true[..., 3:4] / tf.cast(self.img_size[0], tf.float32))
 
-        """ loss_part """
         xy_loss = tf.reduce_sum(tf.square(true_xy - pred_xy) * object_mask * box_loss_scale) / batch_size
         wh_loss = tf.reduce_sum(tf.square(true_wh - pred_wh) * object_mask * box_loss_scale) / batch_size
 
@@ -174,11 +175,11 @@ class FastYolo(object):
 
         # calc loss in 3 scales
         for i in range(len(y_pred)):
-            result = self.cal_loss(y_pred[i], y_true[i], anchor_group[i])
-            loss_xy += result[0]
-            loss_wh += result[1]
-            loss_conf += result[2]
-            loss_class += result[3]
+            loss_xy_i, loss_wh_i, loss_conf_i, loss_class_i = self.cal_loss(y_pred[i], y_true[i], anchor_group[i])
+            loss_xy += loss_xy_i
+            loss_wh += loss_wh_i
+            loss_conf += loss_conf_i
+            loss_class += loss_class_i
         total_loss = loss_xy + loss_wh + loss_conf + loss_class
         total_loss = tf.identity(total_loss, name='loss')
 
