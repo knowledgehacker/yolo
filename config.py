@@ -20,11 +20,11 @@ VOC2012_2007_DIR = '%s/%s' % (DATA_DIR, 'VOC2012')
 ANNOTATION_TRAIN_DIR = '/content/%s/train/Annotations' % VOC2012_2007_DIR
 IMAGE_TRAIN_DIR = '/content/%s/train/JPEGImages' % VOC2012_2007_DIR
 
-"""
+
 # kaggle
 ANNOTATION_TRAIN_DIR = '%s/train/Annotations' % VOC2012_2007_DIR
 IMAGE_TRAIN_DIR = '%s/train/JPEGImages' % VOC2012_2007_DIR
-"""
+
 
 #ANNOTATION_TRAIN_DIR = 'data/tmp/Annotations'
 #IMAGE_TRAIN_DIR = 'data/tmp/JPEGImages'

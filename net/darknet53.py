@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import config
-from utils.layer import conv2d, dbl, res_block, identity
+from utils.compose import conv2d, dbl, res_block, identity
 
 import tensorflow._api.v2.compat.v1 as tf
 tf.disable_v2_behavior()

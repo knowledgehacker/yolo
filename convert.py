@@ -28,8 +28,7 @@ from keras.regularizers import l2
 from keras.utils.vis_utils import plot_model as plot
 
 import config
-from utils.layer import pad2d
-#from utils.compose import space_to_depth_x2
+#from utils.compose import pad2d
 
 parser = argparse.ArgumentParser(description='Darknet To Keras Converter.')
 parser.add_argument('config_path', help='Path to Darknet cfg file.')

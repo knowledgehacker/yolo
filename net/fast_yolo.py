@@ -8,7 +8,7 @@ from keras.layers import Input
 
 import config
 from net.darknet53 import DarkNet53
-from utils.layer import conv2d, yolo_block, upsample, concat, naming
+from utils.compose import conv2d, yolo_block, upsample, concat, naming
 from utils.box import restore_coord, cal_iou
 
 B = config.B
@@ -95,11 +95,6 @@ class FastYolo(object):
         # tw/th
         true_wh = y_true[..., 2:4] / anchors
         pred_wh = pred_boxes[..., 2:4] / anchors
-        """
-        # for numerical stability
-        true_wh = tf.where(condition=tf.equal(true_wh, 0), x=tf.ones_like(true_wh), y=true_wh)
-        pred_wh = tf.where(condition=tf.equal(pred_wh, 0), x=tf.ones_like(pred_wh), y=pred_wh)
-        """
         true_wh = tf.log(tf.clip_by_value(true_wh, 1e-9, 1e9))
         pred_wh = tf.log(tf.clip_by_value(pred_wh, 1e-9, 1e9))
 

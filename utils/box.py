@@ -37,8 +37,6 @@ def restore_coord(feature_map, anchors, ratio):
     box_centers = box_centers * ratio[::-1]
 
     rescaled_anchors = [(anchor[0] / ratio[1], anchor[1] / ratio[0]) for anchor in anchors]
-    print("--- rescaled_anchors")
-    print(rescaled_anchors)
     box_sizes = tf.exp(box_sizes) * rescaled_anchors
     box_sizes = box_sizes * ratio[::-1]
 
